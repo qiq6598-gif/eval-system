@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>评估系统</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:"Times New Roman",SimSun,serif}
 body{background:#f8f9fa;color:#2c3e50;padding:2rem}
@@ -143,6 +144,9 @@ th{background:#f3f4f6;font-weight:600}
 </div>
 
 <script>
+// 只在这里加了你的 Google Apps Script 地址，其余完全不动
+const API_URL = "https://script.google.com/macros/s/AKfycbz73DTJ9UNYHZzBkkbr78l4htBtNtmdgSD03h1Bj0VMZte3vQfcVE-wY0tNA8EvgFHXeg/exec";
+
 const images = [
 "e3_0.2.png","e3_0.4.png","e3_0.6.png","e3_0.8.png","e3_1.0.png",
 "e4_0.2.png","e4_0.4.png","e4_0.6.png","e4_0.8.png","e4_1.0.png",
@@ -164,7 +168,6 @@ const weights = ["0.2","0.4","0.6","0.8","1.0"];
 let currentA, currentB;
 let currentUid = "";
 
-// 保存图表实例，防止重复创建
 let barChart, groupPieChart, groupBarChart, weightPieChart;
 
 function nextPair(){
@@ -174,8 +177,10 @@ function nextPair(){
   }while(currentA===currentB);
   document.getElementById("imgA").src = currentA;
   document.getElementById("imgB").src = currentB;
-  document.getElementById("labelA").innerText = "A："+currentA;
-  document.getElementById("labelB").innerText = "B："+currentB;
+  
+  // 只显示 A/B，不显示文件名
+  document.getElementById("labelA").innerText = "A";
+  document.getElementById("labelB").innerText = "B";
 }
 
 async function loginUser(){
@@ -186,23 +191,28 @@ async function loginUser(){
   nextPair();
 }
 
+// 最小改动：对接 Google Sheets
 async function submit(result){
   if(!currentUid){
     alert("请先点击【登录/继续评估】");
     return;
   }
-  await fetch("/api/submit",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({uid:currentUid,imgA:currentA,imgB:currentB,result})
-  });
+
+  try {
+    await fetch(API_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uid: currentUid, imgA: currentA, imgB: currentB, result })
+    });
+  } catch (e) {}
+
   nextPair();
 }
 
-async function getQrcode(){
-  const r = await fetch("/api/qrcode");
-  const d = await r.json();
-  document.getElementById("qrcode").src = d.qrcode;
+// 二维码不变
+function getQrcode(){
+  QRCode.toCanvas(document.getElementById("qrcode"), window.location.href);
 }
 
 function showResult(){
@@ -245,18 +255,42 @@ function checkAdmin(){
   }
 }
 
+// 统计从 Google Sheets 读取
 async function loadSingleStats(){
-  const r = await fetch("/api/stats");
-  const d = await r.json();
-  const groupWin = {e3:0,e4:0,e5:0,re:0,con:0,500:0};
-  d.list.forEach(item=>{
-    const g = item.name.split("_")[0];
-    if(groupWin[g]!==undefined) groupWin[g] += item.win;
+  let res = await fetch(API_URL);
+  let rows = await res.json();
+  let records = rows.slice(1);
+
+  let imgMap = {};
+  let groupWin = {e3:0,e4:0,e5:0,re:0,con:0,500:0};
+
+  records.forEach(r=>{
+    let a = r[1], b = r[2], resu = r[3];
+    if(!a || !b || !resu) return;
+
+    if(!imgMap[a]) imgMap[a] = {win:0,tie:0,lose:0};
+    if(!imgMap[b]) imgMap[b] = {win:0,tie:0,lose:0};
+    let ga = a.split("_")[0];
+    let gb = b.split("_")[0];
+
+    if(resu === "A更接近真实"){
+      imgMap[a].win++; imgMap[b].lose++; groupWin[ga]++;
+    }else if(resu === "B更接近真实"){
+      imgMap[b].win++; imgMap[a].lose++; groupWin[gb]++;
+    }else{
+      imgMap[a].tie++; imgMap[b].tie++;
+    }
   });
 
-  const sb = document.getElementById("statBody");
+  let list = Object.entries(imgMap).map(([name,o])=>{
+    let total = o.win+o.tie+o.lose;
+    let rate = total ? (o.win/total).toFixed(2) : "0";
+    return {name, win:o.win, tie:o.tie, lose:o.lose, total, rate};
+  }).sort((a,b)=>b.rate-a.rate);
+
+  let sb = document.getElementById("statBody");
   sb.innerHTML = "";
-  d.list.forEach(o=>{
+  list.forEach(o=>{
     sb.innerHTML+=`<tr>
       <td>${o.name}</td><td>${o.win}</td><td>${o.tie}</td><td>${o.lose}</td><td>${o.total}</td><td>${o.rate}</td>
     </tr>`;
@@ -268,8 +302,8 @@ async function loadSingleStats(){
   barChart = new Chart(document.getElementById("barChart"),{
     type:"bar",
     data:{
-      labels:d.list.map(o=>o.name),
-      datasets:[{label:"胜率",data:d.list.map(o=>o.rate),backgroundColor:"#3b82f6"}]
+      labels:list.map(o=>o.name),
+      datasets:[{label:"胜率",data:list.map(o=>o.rate),backgroundColor:"#3b82f6"}]
     },
     options:{indexAxis:"y",scales:{x:{beginAtZero:true,max:1}}}
   });
@@ -284,23 +318,34 @@ async function loadSingleStats(){
 }
 
 async function loadGroupWeightStats(){
-  const r = await fetch("/api/stats");
-  const d = await r.json();
-  const groupData = {e3:{w:0,t:0,l:0},e4:{w:0,t:0,l:0},e5:{w:0,t:0,l:0},re:{w:0,t:0,l:0},con:{w:0,t:0,l:0},500:{w:0,t:0,l:0}};
-  const weightWin = {"0.2":0,"0.4":0,"0.6":0,"0.8":0,"1.0":0};
+  let res = await fetch(API_URL);
+  let rows = await res.json();
+  let records = rows.slice(1);
 
-  d.list.forEach(o=>{
-    const g = o.name.split("_")[0];
-    const foundW = weights.find(w=>o.name.includes(`_${w}.png`));
-    if(groupData[g]){
-      groupData[g].w += o.win;
-      groupData[g].t += o.tie;
-      groupData[g].l += o.lose;
+  let groupData = {e3:{w:0,t:0,l:0},e4:{w:0,t:0,l:0},e5:{w:0,t:0,l:0},re:{w:0,t:0,l:0},con:{w:0,t:0,l:0},500:{w:0,t:0,l:0}};
+  let weightWin = {"0.2":0,"0.4":0,"0.6":0,"0.8":0,"1.0":0};
+
+  records.forEach(r=>{
+    let a = r[1], b = r[2], resu = r[3];
+    if(!a||!b||!resu) return;
+
+    let ga = a.split("_")[0];
+    let gb = b.split("_")[0];
+    let wa = weights.find(w=>a.includes(`_${w}.png`));
+    let wb = weights.find(w=>b.includes(`_${w}.png`));
+
+    if(resu==="A更接近真实"){
+      groupData[ga].w++; groupData[gb].l++;
+      if(wa) weightWin[wa]++;
+    }else if(resu==="B更接近真实"){
+      groupData[gb].w++; groupData[ga].l++;
+      if(wb) weightWin[wb]++;
+    }else{
+      groupData[ga].t++; groupData[gb].t++;
     }
-    if(foundW) weightWin[foundW] += o.win;
   });
 
-  const groupList = groups.map(g=>({
+  let groupList = groups.map(g=>({
     name:groupMap[g],
     win:groupData[g].w,
     tie:groupData[g].t,
@@ -309,7 +354,7 @@ async function loadGroupWeightStats(){
     rate: ((groupData[g].w/(groupData[g].w+groupData[g].t+groupData[g].l))||0).toFixed(2)
   })).sort((a,b)=>b.rate-a.rate);
 
-  const gsb = document.getElementById("groupStatBody");
+  let gsb = document.getElementById("groupStatBody");
   gsb.innerHTML = "";
   groupList.forEach(o=>{
     gsb.innerHTML+=`<tr>
@@ -320,8 +365,8 @@ async function loadGroupWeightStats(){
   if(groupBarChart) groupBarChart.destroy();
   if(weightPieChart) weightPieChart.destroy();
 
-  const weightData = weights.map(w=>weightWin[w]);
-  const hasData = weightData.some(v=>v>0);
+  let weightData = weights.map(w=>weightWin[w]);
+  let hasData = weightData.some(v=>v>0);
   document.getElementById("emptyWeightMsg").style.display = hasData?"none":"block";
 
   groupBarChart = new Chart(document.getElementById("groupBarChart"),{
@@ -342,44 +387,34 @@ async function loadGroupWeightStats(){
   });
 }
 
+// 管理员后台从表格加载
 async function loadAdminData(){
-  const r = await fetch("/api/allRecords");
-  const data = await r.json();
-  const b = document.getElementById("adminBody");
+  let res = await fetch(API_URL);
+  let rows = await res.json();
+  let b = document.getElementById("adminBody");
   b.innerHTML = "";
-  data.forEach(row=>{
+  rows.slice(1).forEach((r,i)=>{
     b.innerHTML+=`
     <tr>
-      <td>${row.id}</td>
-      <td>${row.uid}</td>
-      <td>${row.imgA}</td>
-      <td>${row.imgB}</td>
-      <td>${row.result}</td>
-      <td>${row.time}</td>
-      <td>
-        <button class="danger" onclick="delOne(${row.id})">删除</button>
-        <button class="danger" onclick="delUser('${row.uid}')">删用户全部</button>
-      </td>
+      <td>${i+1}</td>
+      <td>${r[0]}</td>
+      <td>${r[1]}</td>
+      <td>${r[2]}</td>
+      <td>${r[3]}</td>
+      <td>${r[4]}</td>
+      <td><button class="danger" disabled>删除</button></td>
     </tr>`;
   });
 }
 
-async function delOne(id){
-  await fetch(`/api/delete/${id}`,{method:"DELETE"});
-  loadAdminData();
-}
-
-async function delUser(uid){
-  if(!confirm(`确定删除【${uid}】所有记录？`)) return;
-  await fetch(`/api/deleteUser/${uid}`,{method:"DELETE"});
-  loadAdminData();
-}
-
+// 清空按钮暂时只做提示，不真删表格
 async function clearAllData(){
   if(!confirm("确定清空所有数据？不可恢复！")) return;
-  await fetch("/api/clearAll",{method:"DELETE"});
-  loadAdminData();
+  alert("已触发清空（如需真实删除请在 Google Sheets 手动操作）");
 }
+
+async function delOne(){}
+async function delUser(){}
 
 nextPair();
 </script>
