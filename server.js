@@ -16,7 +16,7 @@ body{background:#f8f9fa;color:#2c3e50;padding:2rem}
 .img-card img{width:100%;height:450px;object-fit:contain;background:#f9fafb}
 .img-label{text-align:center;padding:12px;font-size:15px;background:#f3f4f6;font-weight:500}
 .bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
-input{padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;width:180px}
+input{padding:8px 12px;border:1px solid #d15dbdb;border-radius:6px;width:180px}
 button{padding:8px 16px;border:none;border-radius:6px;background:#3b82f6;color:#fff;cursor:pointer}
 button.secondary{background:#64748b}
 button.warn{background:#f59e0b}
@@ -174,8 +174,8 @@ function nextPair(){
   }while(currentA===currentB);
   document.getElementById("imgA").src = currentA;
   document.getElementById("imgB").src = currentB;
-  
-  // 只显示A/B，不显示文件名
+
+  // 只显示 A、B，后面不加任何名称
   document.getElementById("labelA").innerText = "A";
   document.getElementById("labelB").innerText = "B";
 }
