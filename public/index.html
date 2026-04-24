@@ -188,7 +188,7 @@ th{background:#f3f4f6;font-weight:600}
 
 <script>
 // 你的谷歌API 不变
-const API_URL = "https://script.google.com/macros/s/AKfycbzBATfagyFoWNQBGlyvID7DX0jvxCuJDIMbYSGaCzVLEaO2VY3ABiPHJcOxCVmg4VdV6A/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbypGdfoQYlNZtg0BwQAjgeAlml92AVJPaAjOHUaPqf5DrGmFz61QXk1Bwd5aRKI3Ol80w/exec";
 
 const images = [
 "e3_0.2.png","e3_0.4.png","e3_0.6.png","e3_0.8.png","e3_1.0.png",
@@ -243,10 +243,9 @@ async function submitScore(){
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify(payload)
   });
-  alert("打分提交成功，数据已清晰存入表格");
+  alert("打分提交成功，数据已正确写入表格");
   nextPair();
 }
-
 // 二维码
 function getQrcode(){
   QRCode.toCanvas(document.getElementById("qrcode"),window.location.href);
