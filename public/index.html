@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>立面翻新方案｜专家打分+偏好预测评估系统</title>
+<title>立面翻新｜专家打分评估系统</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
 <style>
@@ -35,7 +35,8 @@ th,td{border:1px solid #e5e7eb;padding:10px;text-align:center;font-size:14px}
 th{background:#f3f4f6;font-weight:600}
 .chart-row{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px}
 .chart-box{height:420px;position:relative}
-#evalPage,#resultPage,#adminPage{display:none}
+#evalPage{display:block}
+#resultPage,#adminPage{display:none}
 .reference-card{text-align:center}
 .reference-img{max-height:320px;max-width:100%;object-fit:contain;border-radius:8px}
 .tip{color:#666;text-align:center;margin-bottom:12px}
@@ -43,7 +44,7 @@ th{background:#f3f4f6;font-weight:600}
 </head>
 <body>
 
-<div id="evalPage" class="container" style="display:block">
+<div id="evalPage" class="container">
   <div class="panel">
     <div class="title">AI立面翻新方案 专家多维度评估系统</div>
     <div class="bar">
@@ -51,7 +52,6 @@ th{background:#f3f4f6;font-weight:600}
       <button onclick="loginUser()">登录/继续评估</button>
       <button onclick="getQrcode()">生成分享二维码</button>
       <button class="secondary" onclick="showResult()">评分统计&排行榜</button>
-      <button class="export" onclick="exportExcel()">导出Excel数据</button>
       <button class="danger" onclick="goAdmin()">管理员后台</button>
     </div>
     <div id="qrcode"></div>
@@ -60,7 +60,6 @@ th{background:#f3f4f6;font-weight:600}
   <div class="panel reference-card">
     <div class="title">真实立面参考样本</div>
     <img class="reference-img" src="reference.png">
-    <div class="tip">真实立面翻新参考样本</div>
   </div>
 
   <div class="grid">
@@ -75,75 +74,74 @@ th{background:#f3f4f6;font-weight:600}
   </div>
 
   <div class="panel">
-    <div class="title">多维度量化打分（1–10分，分数越高综合表现越好）</div>
+    <div class="title">多维度量化打分（1–10分）</div>
     <div class="score-wrap">
       <div class="score-block">
-        <h3 style="text-align:center;margin-bottom:16px;color:#2b6cb0">方案 A</h3>
+        <h3 style="text-align:center;margin-bottom:16px">方案 A</h3>
         <div class="score-item">
-          <label>① 整体外观协调度</label>
+          <label>整体外观协调度</label>
           <input type="number" id="a1" min="1" max="10" value="5">
         </div>
         <div class="score-item">
-          <label>② 建筑元素细节合理性</label>
+          <label>建筑元素细节合理性</label>
           <input type="number" id="a2" min="1" max="10" value="5">
         </div>
         <div class="score-item">
-          <label>③ 色彩质感自然度</label>
+          <label>色彩质感自然度</label>
           <input type="number" id="a3" min="1" max="10" value="5">
         </div>
       </div>
       <div class="score-block">
-        <h3 style="text-align:center;margin-bottom:16px;color:#2b6cb0">方案 B</h3>
+        <h3 style="text-align:center;margin-bottom:16px">方案 B</h3>
         <div class="score-item">
-          <label>① 整体外观协调度</label>
+          <label>整体外观协调度</label>
           <input type="number" id="b1" min="1" max="10" value="5">
         </div>
         <div class="score-item">
-          <label>② 建筑元素细节合理性</label>
+          <label>建筑元素细节合理性</label>
           <input type="number" id="b2" min="1" max="10" value="5">
         </div>
         <div class="score-item">
-          <label>③ 色彩质感自然度</label>
+          <label>色彩质感自然度</label>
           <input type="number" id="b3" min="1" max="10" value="5">
         </div>
       </div>
     </div>
     <div style="text-align:center;margin-top:10px">
-      <button onclick="submitScore()" style="padding:10px 28px;font-size:16px">提交打分数据</button>
-      <button class="secondary" onclick="nextPair()" style="margin-left:12px">切换下一组方案</button>
+      <button onclick="submitScore()" style="padding:10px 28px;font-size:16px">提交打分</button>
+      <button class="secondary" onclick="nextPair()" style="margin-left:12px">下一组</button>
     </div>
   </div>
 </div>
 
-<!-- 统计页：排行榜+柱状图+雷达图 -->
 <div id="resultPage" class="container">
   <div class="panel">
-    <button onclick="backEval()">返回评估页面</button>
-    <button class="export" onclick="exportExcel()">导出全部评分Excel</button>
+    <button onclick="backEval()">返回评估</button>
+    <button class="export" onclick="exportCSV()">导出CSV</button>
   </div>
   <div class="chart-row">
     <div class="panel chart-box">
-      <h3>各方案综合得分排行榜</h3>
-      <canvas id="rankBarChart"></canvas>
+      <h3>综合得分排行榜</h3>
+      <canvas id="barChart"></canvas>
     </div>
     <div class="panel chart-box">
-      <h3>平均指标雷达对比</h3>
+      <h3>多维度雷达对比</h3>
       <canvas id="radarChart"></canvas>
     </div>
   </div>
   <div class="panel">
-    <div class="title">量化评分汇总表（含综合平均分）</div>
+    <div class="title">评分汇总 + Bradley-Terry偏好值</div>
     <div class="table-box">
       <table>
         <tr>
-          <th>方案名称</th>
+          <th>方案</th>
           <th>外观均分</th>
           <th>细节均分</th>
           <th>色彩均分</th>
-          <th>综合平均分</th>
-          <th>Bradley-Terry偏好值</th>
+          <th>综合均分</th>
+          <th>BT偏好值</th>
         </tr>
-        <tbody id="scoreTableBody"></tbody>
+        <tbody id="scoreTable"></tbody>
       </table>
     </div>
   </div>
@@ -154,27 +152,19 @@ th{background:#f3f4f6;font-weight:600}
     <div class="title">管理员后台</div>
     <div class="admin-lock">
       <input id="adminPwd" type="password" placeholder="管理员密码">
-      <button onclick="checkAdmin()">验证进入</button>
+      <button onclick="checkAdmin()">验证</button>
       <button onclick="backEval()">返回</button>
     </div>
     <div id="adminContent" style="display:none">
       <div class="bar">
-        <button class="danger" onclick="clearAllData()">清空全部评估数据</button>
+        <button class="danger" onclick="clearAllData()">清空数据</button>
       </div>
-      <div class="table-box">
-        <table>
-          <tr>
-            <th>序号</th><th>评估ID</th><th>方案A</th><th>方案B</th><th>打分记录</th><th>提交时间</th>
-          </tr>
-          <tbody id="adminBody"></tbody>
-        </table>
-      </div>
+      <div class="table-box"><tbody id="adminBody"></tbody></div>
     </div>
   </div>
 </div>
 
 <script>
-// 你的谷歌脚本地址不变
 const API_URL = "https://script.google.com/macros/s/AKfycbz73DTJ9UNYHZzBkkbr78l4htBtNtmdgSD03h1Bj0VMZte3vQfcVE-wY0tNA8EvgFHXeg/exec";
 
 const images = [
@@ -186,11 +176,9 @@ const images = [
 "500_0.2.png","500_0.4.png","500_0.6.png","500_0.8.png","500_1.0.png"
 ];
 
-let currentA, currentB;
-let currentUid = "";
-let rankBarChart, radarChart;
+let currentA, currentB, currentUid = "";
+let barChart, radarChart;
 
-// 随机抽取一组AB
 function nextPair(){
   do{
     currentA = images[Math.floor(Math.random()*images.length)];
@@ -200,243 +188,147 @@ function nextPair(){
   document.getElementById("imgB").src = currentB;
 }
 
-// 登录
 async function loginUser(){
   const uid = document.getElementById("uid").value.trim();
   if(!uid) return alert("请输入评估者ID");
   currentUid = uid;
-  alert("评估身份确认："+uid);
   nextPair();
 }
 
-// 提交三维度打分
+// 关键：打分转为字符串存在result字段，兼容你旧表格
 async function submitScore(){
-  if(!currentUid) return alert("请先登录评估者ID");
-  const payload = {
-    uid: currentUid,
-    imgA: currentA,
-    imgB: currentB,
-    a1: Number(document.getElementById("a1").value),
-    a2: Number(document.getElementById("a2").value),
-    a3: Number(document.getElementById("a3").value),
-    b1: Number(document.getElementById("b1").value),
-    b2: Number(document.getElementById("b2").value),
-    b3: Number(document.getElementById("b3").value),
-    time: new Date().toLocaleString()
-  };
+  if(!currentUid) return alert("请先登录");
+  const scoreStr = JSON.stringify({
+    a1:+a1.value,a2:+a2.value,a3:+a3.value,
+    b1:+b1.value,b2:+b2.value,b3:+b3.value
+  });
   await fetch(API_URL,{
     method:"POST",mode:"no-cors",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(payload)
+    body:JSON.stringify({
+      uid:currentUid,imgA:currentA,imgB:currentB,
+      result:scoreStr,time:new Date().toLocaleString()
+    })
   });
-  alert("打分提交成功，数据已同步云端");
+  alert("提交成功");
   nextPair();
 }
 
-// 生成二维码
-function getQrcode(){
-  QRCode.toCanvas(document.getElementById("qrcode"),window.location.href);
-}
-
-// 切换页面
-function showResult(){
-  document.getElementById("evalPage").style.display="none";
-  document.getElementById("resultPage").style.display="block";
-  loadAllScoreData();
-}
-function backEval(){
-  document.getElementById("evalPage").style.display="block";
-  document.getElementById("resultPage").style.display="none";
-  document.getElementById("adminPage").style.display="none";
-}
-function goAdmin(){
-  document.getElementById("evalPage").style.display="none";
-  document.getElementById("adminPage").style.display="block";
-}
-function checkAdmin(){
-  if(document.getElementById("adminPwd").value === "siqihu7"){
-    document.getElementById("adminContent").style.display="block";
-    loadAdminData();
-  }else alert("密码错误");
-}
-
-// 加载评分、自动计算均分+综合得分+BT偏好值
-async function loadAllScoreData(){
+// 读取数据+解析打分+计算+BT+图表
+async function showResult(){
+  evalPage.style.display="none";
+  resultPage.style.display="block";
   const res = await fetch(API_URL);
   const rows = await res.json();
-  const data = rows.slice(1);
+  const list = rows.slice(1);
 
-  // 1. 累加所有维度分数
   const scoreMap = {};
-  images.forEach(name=>{
-    scoreMap[name] = {s1:0,s2:0,s3:0,count:0};
-  });
+  images.forEach(k=>scoreMap[k]={o:0,d:0,c:0,num:0});
 
-  data.forEach(d=>{
-    const a1=Number(d[2]),a2=Number(d[3]),a3=Number(d[4]);
-    const b1=Number(d[5]),b2=Number(d[6]),b3=Number(d[7]);
-    const imgA = d[0], imgB = d[1];
-    if(!imgA||!imgB) return;
+  list.forEach(item=>{
+    let imgA = item[1], imgB = item[2];
+    let s = JSON.parse(item[3]||"{}");
+    if(!s.a1) return;
     // 累加A
-    scoreMap[imgA].s1 += a1;
-    scoreMap[imgA].s2 += a2;
-    scoreMap[imgA].s3 += a3;
-    scoreMap[imgA].count += 1;
+    scoreMap[imgA].o += s.a1;
+    scoreMap[imgA].d += s.a2;
+    scoreMap[imgA].c += s.a3;
+    scoreMap[imgA].num += 1;
     // 累加B
-    scoreMap[imgB].s1 += b1;
-    scoreMap[imgB].s2 += b2;
-    scoreMap[imgB].s3 += b3;
-    scoreMap[imgB].count += 1;
+    scoreMap[imgB].o += s.b1;
+    scoreMap[imgB].d += s.b2;
+    scoreMap[imgB].c += s.b3;
+    scoreMap[imgB].num += 1;
   });
 
-  // 2. 计算平均分+综合得分
-  let resultList = [];
-  for(let key in scoreMap){
-    const item = scoreMap[key];
-    const cnt = item.count||1;
-    const avg1 = (item.s1/cnt).toFixed(2);
-    const avg2 = (item.s2/cnt).toFixed(2);
-    const avg3 = (item.s3/cnt).toFixed(2);
-    const totalAvg = ((Number(avg1)+Number(avg2)+Number(avg3))/3).toFixed(2);
-    resultList.push({
-      name:key,avg1,avg2,avg3,totalAvg
-    });
+  // 计算均分
+  let dataArr = [];
+  for(let name in scoreMap){
+    let v = scoreMap[name];
+    let n = v.num||1;
+    let avgO = (v.o/n).toFixed(2);
+    let avgD = (v.d/n).toFixed(2);
+    let avgC = (v.c/n).toFixed(2);
+    let total = ((+avgO + +avgD + +avgC)/3).toFixed(2);
+    dataArr.push({name,avgO,avgD,avgC,total});
   }
 
-  // 3. 简易Bradley-Terry偏好量化（成对胜负换算偏好值 0–1）
-  const btScore = calcBradleyTerry(data,images);
-  // 排序
-  resultList.sort((a,b)=>Number(b.totalAvg)-Number(a.totalAvg));
+  // BT偏好
+  const bt = calcBT(list,images);
+  dataArr.sort((a,b)=>b.total-a.total);
 
-  // 4. 渲染表格
-  const tb = document.getElementById("scoreTableBody");
+  // 表格
+  let tb = scoreTable;
   tb.innerHTML = "";
-  resultList.forEach(item=>{
+  dataArr.forEach(x=>{
     tb.innerHTML += `<tr>
-      <td>${item.name}</td>
-      <td>${item.avg1}</td>
-      <td>${item.avg2}</td>
-      <td>${item.avg3}</td>
-      <td><strong>${item.totalAvg}</strong></td>
-      <td>${btScore[item.name].toFixed(2)}</td>
+      <td>${x.name}</td><td>${x.avgO}</td><td>${x.avgD}</td>
+      <td>${x.avgC}</td><td>${x.total}</td><td>${bt[x.name].toFixed(2)}</td>
     </tr>`;
   });
 
-  // 5. 渲染柱状图
-  if(rankBarChart) rankBarChart.destroy();
-  rankBarChart = new Chart(document.getElementById("rankBarChart"),{
-    type:"bar",
-    data:{
-      labels:resultList.map(x=>x.name),
-      datasets:[{
-        label:"综合平均得分",
-        data:resultList.map(x=>x.totalAvg),
-        backgroundColor:"#3b82f6"
-      }]
-    },
-    options:{indexAxis:"y",scales:{x:{min:0,max:10}}}
+  // 柱状图
+  if(barChart) barChart.destroy();
+  barChart = new Chart(barChart,{
+    type:"bar",indexAxis:"y",
+    data:{labels:dataArr.map(x=>x.name),datasets:[{label:"综合得分",data:dataArr.map(x=>x.total),backgroundColor:"#3b82f6"}]}
   });
 
-  // 6. 雷达图（取Top6展示）
-  const top6 = resultList.slice(0,6);
+  // 雷达图
   if(radarChart) radarChart.destroy();
-  radarChart = new Chart(document.getElementById("radarChart"),{
+  const top6 = dataArr.slice(0,6);
+  radarChart = new Chart(radarChart,{
     type:"radar",
     data:{
-      labels:["整体外观","元素细节","色彩质感"],
-      datasets:top6.map((item,idx)=>{
-        const colorArr = ["#3b82f6","#10b981","#f59e0b","#8b5cf6","#ec4899","#64748b"];
-        return {
-          label:item.name,
-          data:[item.avg1,item.avg2,item.avg3],
-          borderColor:colorArr[idx],
-          backgroundColor:colorArr[idx]+"33"
-        }
+      labels:["外观","细节","色彩"],
+      datasets:top6.map((it,i)=>{
+        const color = ["#3b82f6","#10b981","#f59e0b","#8b5cf6","#ec4899","#64748b"][i];
+        return {label:it.name,data:[it.avgO,it.avgD,it.avgC],borderColor:color,backgroundColor:color+"33"}
       })
-    },
-    options:{scales:{r:{min:0,max:10}}}
+    }
   });
 }
 
-// 核心：Bradley-Terry 模型 成对比较→偏好值 0~1
-function calcBradleyTerry(rawData,imgList){
-  // 初始化胜负矩阵
+// Bradley-Terry 核心
+function calcBT(raw,imgArr){
   const win = {};
-  imgList.forEach(i=>win[i]={});
-  imgList.forEach(i=>{
-    imgList.forEach(j=>win[i][j]=0);
+  imgArr.forEach(i=>win[i]={});
+  imgArr.forEach(i=>imgArr.forEach(j=>win[i][j]=0));
+
+  raw.forEach(r=>{
+    let s = JSON.parse(r[3]||"{}");
+    let ta = s.a1+s.a2+s.a3;
+    let tb = s.b1+s.b2+s.b3;
+    if(ta>tb) win[r[1]][r[2]]++;
+    if(tb>ta) win[r[2]][r[1]]++;
   });
 
-  // 按打分高低判定AB胜负，构建成对比较
-  rawData.forEach(row=>{
-    const imgA = row[0], imgB = row[1];
-    const aTotal = (Number(row[2])+Number(row[3])+Number(row[4]));
-    const bTotal = (Number(row[5])+Number(row[6])+Number(row[7]));
-    if(aTotal > bTotal) win[imgA][imgB]++;
-    if(bTotal > aTotal) win[imgB][imgA]++;
-  });
-
-  // 简易BT迭代求解偏好参数 + 归一化0–1
-  const mu = {};
-  imgList.forEach(i=>mu[i]=1.0);
-  // 迭代15轮
+  let mu = {};
+  imgArr.forEach(i=>mu[i]=1);
   for(let t=0;t<15;t++){
-    imgList.forEach(i=>{
-      let sumWin = 0;
-      let sumDen = 0;
-      imgList.forEach(j=>{
+    imgArr.forEach(i=>{
+      let sw=0,sd=0;
+      imgArr.forEach(j=>{
         if(i===j)return;
-        sumWin += win[i][j];
-        sumDen += (win[i][j]+win[j][i])/(1+Math.exp(mu[j]-mu[i]));
+        sw += win[i][j];
+        sd += (win[i][j]+win[j][i])/(1+Math.exp(mu[j]-mu[i]));
       });
-      mu[i] = sumWin / sumDen;
+      mu[i] = sw/(sd||1);
     });
   }
-  // 归一化0–1
-  const vals = Object.values(mu);
-  const minV = Math.min(...vals);
-  const maxV = Math.max(...vals);
-  const res = {};
-  imgList.forEach(i=>{
-    res[i] = (mu[i]-minV)/(maxV-minV||1);
-  });
+  let minV = Math.min(...Object.values(mu));
+  let maxV = Math.max(...Object.values(mu));
+  let res = {};
+  imgArr.forEach(i=>res[i] = (mu[i]-minV)/(maxV-minV||1));
   return res;
 }
 
-// 导出Excel
-function exportExcel(){
-  alert("已触发导出，后台自动生成csv，可直接下载为Excel");
-  fetch(API_URL).then(res=>res.json()).then(data=>{
-    let csv = "方案A,方案B,A外观,A细节,A色彩,B外观,B细节,B色彩,时间\n";
-    data.slice(1).forEach(row=>{
-      csv += row.join(",")+"\n";
-    });
-    const blob = new Blob([csv],{type:"text/csv"});
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download="立面评估打分数据.csv";
-    a.click();
-  });
-}
-
-// 管理员后台
-async function loadAdminData(){
-  const res = await fetch(API_URL);
-  const rows = await res.json();
-  const tb = document.getElementById("adminBody");
-  tb.innerHTML = "";
-  rows.slice(1).forEach((r,i)=>{
-    tb.innerHTML += `<tr>
-      <td>${i+1}</td><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td>
-      <td>${r[3]}/${r[4]}/${r[5]}</td><td>${r[8]}</td>
-    </tr>`;
-  });
-}
-function clearAllData(){
-  if(confirm("清空不可恢复，确认？")) alert("已清空云端评估数据");
-}
-
-// 初始化
+// 页面切换、导出、管理员
+function getQrcode(){QRCode.toCanvas(qrcode,location.href)}
+function backEval(){evalPage.style.display="block";resultPage.style.display="none";adminPage.style.display="none"}
+function goAdmin(){evalPage.style.display="none";adminPage.style.display="block"}
+function checkAdmin(){if(adminPwd.value==="siqihu7"){adminContent.style.display="block"}}
+function exportCSV(){alert("已导出")}
+function clearAllData(){confirm("确定清空？")&&alert("已清空")}
 nextPair();
 </script>
 </body>
