@@ -27,8 +27,8 @@ body{background:#f8f9fa;color:#2c3e50;padding:2rem}
 .score-btn.active{background:#3b82f6;color:white;border-color:#3b82f6}
 
 /* 滑杆样式 */
-.score-slider{width:100%;height:8px;border-radius:4px;background:#e5e7eb;margin-top:6px}
-.score-slider::-webkit-slider-thumb{appearance:none;width:20px;height:20px;border-radius:50%;background:#3b82f6}
+.score-slider{width:100%;height:8px;border-radius:4px;background:#e5e7eb;margin-top:6px;outline:none}
+.score-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;background:#3b82f6;cursor:pointer}
 
 .score-input{width:80px;padding:8px;text-align:center;border-radius:6px;border:1px solid #ccc}
 .mode-select{margin-bottom:10px;font-size:14px}
@@ -38,39 +38,42 @@ button{padding:8px 16px;border:none;border-radius:6px;background:#3b82f6;color:#
 button.secondary{background:#64748b}
 button.danger{background:#ef4444}
 button.export{background:#722ed1}
-#qrcode{width:160px;margin:10px auto}
+#qrcode{width:160px;margin:10px auto;display:block;border-radius:8px}
 .table-box{overflow-x:auto;margin-top:12px}
-table{width:100%;border-collapse:collapse}
+table{width:100%;border-collapse:collapse;background:#fff}
 th,td{border:1px solid #e5e7eb;padding:10px;text-align:center;font-size:14px}
-th{background:#f3f4f6}
-.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:24px}
-.chart-box{height:420px}
-#resultPage,#adminPage{display:none}
-.reference-img{max-height:350px;max-width:100%;object-fit:contain}
-.desc{text-align:center;margin:10px 0;color:#666}
+th{background:#f3f4f6;font-weight:600}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px}
+.chart-box{height:420px;position:relative}
+#evalPage,#resultPage,#adminPage{display:block}
+.reference-card{text-align:center}
+.reference-img{max-height:350px;max-width:100%;object-fit:contain;border-radius:8px}
+.admin-lock{margin-bottom:16px;display:flex;gap:10px;align-items:center}
+.desc{text-align:center;font-size:16px;margin-bottom:16px;color:#444}
+.del-bar{margin:12px 0;display:flex;gap:10px;align-items:center}
 </style>
 </head>
 <body>
 
-<div id="evalPage" class="container">
+<div id="evalPage" class="container" style="display:block">
   <div class="panel">
-    <div class="title">AI立面翻新方案 专家多维度评估系统</div>
+    <div class="title">AI立面翻新方案 专家多维度打分评估系统</div>
     <div class="bar">
       <input id="uid" placeholder="请先输入评估者ID">
-      <button onclick="loginUser()">登录/开始</button>
-      <button onclick="getQrcode()">分享二维码</button>
-      <button class="secondary" onclick="showResult()">查看统计</button>
-      <button class="export" onclick="exportExcel()">导出数据</button>
-      <button class="danger" onclick="goAdmin()">管理后台</button>
+      <button onclick="loginUser()">登录/开始评估</button>
+      <button onclick="getQrcode()">生成分享二维码</button>
+      <button class="secondary" onclick="showResult()">评分统计&排行榜</button>
+      <button class="export" onclick="exportExcel()">导出全部数据Excel</button>
+      <button class="danger" onclick="goAdmin()">管理员后台</button>
     </div>
-    <div id="qrcode"></div>
     <div id="loginTip" style="color:red;margin-top:10px;font-weight:bold;"></div>
+    <img id="qrcode">
   </div>
 
-  <div class="panel">
-    <div class="title">真实案例参考</div>
+  <div class="panel reference-card">
+    <div class="title">现实翻新案例拍摄参考图</div>
     <img class="reference-img" src="reference.png">
-    <div class="desc">以真实建筑为标准，对两张方案进行1-10分快捷打分</div>
+    <div class="desc">以真实翻新建筑为参照，对AI翻新方案1-10分量化打分（支持按钮/滑杆/输入三种方式）</div>
   </div>
 
   <div class="grid">
@@ -92,97 +95,123 @@ th{background:#f3f4f6}
         <option value="input">手动输入</option>
       </select>
     </div>
-
     <div class="score-wrap">
       <div class="score-block">
-        <h3 style="text-align:center">方案 A</h3>
-        
+        <h3 style="text-align:center;margin-bottom:16px;color:#2b6cb0">方案 A</h3>
+        <!-- 方案A 外观 -->
         <div class="score-item">
           <label>① 整体外观协调度</label>
           <div class="score-btn-group" id="a1-group"></div>
-          <input type="range" class="score-slider" id="a1-slider" min="1" max="10" value="5" style="display:none">
+          <input type="range" class="score-slider" id="a1-slider" min="1" max="10" value="5" style="display:none" oninput="syncFromSlider('a1')">
           <input type="number" class="score-input" id="a1" min="1" max="10" value="5" style="display:none">
         </div>
-
+        <!-- 方案A 细节 -->
         <div class="score-item">
           <label>② 建筑元素细节合理性</label>
           <div class="score-btn-group" id="a2-group"></div>
-          <input type="range" class="score-slider" id="a2-slider" min="1" max="10" value="5" style="display:none">
+          <input type="range" class="score-slider" id="a2-slider" min="1" max="10" value="5" style="display:none" oninput="syncFromSlider('a2')">
           <input type="number" class="score-input" id="a2" min="1" max="10" value="5" style="display:none">
         </div>
-
+        <!-- 方案A 色彩 -->
         <div class="score-item">
           <label>③ 色彩质感自然度</label>
           <div class="score-btn-group" id="a3-group"></div>
-          <input type="range" class="score-slider" id="a3-slider" min="1" max="10" value="5" style="display:none">
+          <input type="range" class="score-slider" id="a3-slider" min="1" max="10" value="5" style="display:none" oninput="syncFromSlider('a3')">
           <input type="number" class="score-input" id="a3" min="1" max="10" value="5" style="display:none">
         </div>
       </div>
-
       <div class="score-block">
-        <h3 style="text-align:center">方案 B</h3>
-        
+        <h3 style="text-align:center;margin-bottom:16px;color:#2b6cb0">方案 B</h3>
+        <!-- 方案B 外观 -->
         <div class="score-item">
           <label>① 整体外观协调度</label>
           <div class="score-btn-group" id="b1-group"></div>
-          <input type="range" class="score-slider" id="b1-slider" min="1" max="10" value="5" style="display:none">
+          <input type="range" class="score-slider" id="b1-slider" min="1" max="10" value="5" style="display:none" oninput="syncFromSlider('b1')">
           <input type="number" class="score-input" id="b1" min="1" max="10" value="5" style="display:none">
         </div>
-
+        <!-- 方案B 细节 -->
         <div class="score-item">
           <label>② 建筑元素细节合理性</label>
           <div class="score-btn-group" id="b2-group"></div>
-          <input type="range" class="score-slider" id="b2-slider" min="1" max="10" value="5" style="display:none">
+          <input type="range" class="score-slider" id="b2-slider" min="1" max="10" value="5" style="display:none" oninput="syncFromSlider('b2')">
           <input type="number" class="score-input" id="b2" min="1" max="10" value="5" style="display:none">
         </div>
-
+        <!-- 方案B 色彩 -->
         <div class="score-item">
           <label>③ 色彩质感自然度</label>
           <div class="score-btn-group" id="b3-group"></div>
-          <input type="range" class="score-slider" id="b3-slider" min="1" max="10" value="5" style="display:none">
+          <input type="range" class="score-slider" id="b3-slider" min="1" max="10" value="5" style="display:none" oninput="syncFromSlider('b3')">
           <input type="number" class="score-input" id="b3" min="1" max="10" value="5" style="display:none">
         </div>
       </div>
     </div>
-
-    <div style="text-align:center;margin-top:20px">
-      <button onclick="submitAndNext()" style="padding:12px 30px;font-size:16px">
-        提交并自动下一组
-      </button>
+    <div style="text-align:center; margin-top:20px;">
+      <button onclick="submitAndNext()" style="padding:12px 30px; font-size:16px;">提交并自动下一组</button>
     </div>
   </div>
 </div>
 
-<div id="resultPage" class="container">
+<!-- 统计页面：表格+柱状图+雷达图+BT值 -->
+<div id="resultPage" class="container" style="display:none">
   <div class="panel">
-    <button onclick="backEval()">返回评估</button>
-    <button onclick="exportExcel()">导出CSV</button>
+    <button onclick="backEval()">返回评估页面</button>
+    <button class="export" onclick="exportExcel()">导出Excel原始数据</button>
   </div>
   <div class="chart-row">
-    <div class="panel"><h3>综合得分排行</h3><canvas id="rankBarChart"></canvas></div>
-    <div class="panel"><h3>多维度雷达图</h3><canvas id="radarChart"></canvas></div>
+    <div class="panel chart-box">
+      <h3>各方案综合得分排行榜</h3>
+      <canvas id="rankBarChart"></canvas>
+    </div>
+    <div class="panel chart-box">
+      <h3>多维度指标雷达对比</h3>
+      <canvas id="radarChart"></canvas>
+    </div>
   </div>
   <div class="panel">
-    <table>
-      <tr><th>方案</th><th>外观均分</th><th>细节均分</th><th>色彩均分</th><th>综合均分</th><th>BT偏好值</th></tr>
-      <tbody id="scoreTableBody"></tbody>
-    </table>
+    <div class="title">打分汇总表｜单项均分 + 综合均分 + Bradley-Terry偏好值</div>
+    <div class="table-box">
+      <table>
+        <tr>
+          <th>方案名称</th>
+          <th>外观均分</th>
+          <th>细节均分</th>
+          <th>色彩均分</th>
+          <th>综合平均分</th>
+          <th>BT偏好值(0~1)</th>
+        </tr>
+        <tbody id="scoreTableBody"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
-<div id="adminPage" class="container">
+<!-- 管理员后台：单条删除 / 按ID删 / 全删 -->
+<div id="adminPage" class="container" style="display:none">
   <div class="panel">
-    <div class="title">管理员后台</div>
-    <input id="adminPwd" type="password" placeholder="密码">
-    <button onclick="checkAdmin()">进入</button>
-    <button onclick="backEval()">返回</button>
-    <div id="adminContent" style="display:none;margin-top:20px">
-      <button class="danger" onclick="clearAllData()">清空全部数据</button>
-      <input id="delUidInput" placeholder="输入要删除的ID">
-      <button class="danger" onclick="delByUid()">删除该ID所有记录</button>
-      <div class="table-box" style="margin-top:16px">
+    <div class="title">管理员后台｜数据管理</div>
+    <div class="admin-lock">
+      <input id="adminPwd" type="password" placeholder="输入管理员密码">
+      <button onclick="checkAdmin()">验证进入后台</button>
+      <button onclick="backEval()">返回评估</button>
+    </div>
+    <div id="adminContent" style="display:none">
+      <div class="bar del-bar">
+        <button class="danger" onclick="clearAllData()">⚠️ 一键清空全部数据</button>
+        <input id="delUidInput" placeholder="输入要批量删除的ID" style="width:150px">
+        <button class="danger" onclick="delByUid()">删除该ID所有记录</button>
+      </div>
+      <div class="table-box">
         <table>
-          <tr><th>序号</th><th>评估ID</th><th>A</th><th>B</th><th>A分数</th><th>B分数</th><th>时间</th><th>操作</th></tr>
+          <tr>
+            <th>序号</th>
+            <th>评估ID</th>
+            <th>方案A</th>
+            <th>方案B</th>
+            <th>A三项分数</th>
+            <th>B三项分数</th>
+            <th>提交时间</th>
+            <th>操作</th>
+          </tr>
           <tbody id="adminBody"></tbody>
         </table>
       </div>
@@ -191,6 +220,7 @@ th{background:#f3f4f6}
 </div>
 
 <script>
+// 你的谷歌API 不变
 const API_URL = "https://script.google.com/macros/s/AKfycbypGdfoQYlNZtg0BwQAjgeAlml92AVJPaAjOHUaPqf5DrGmFz61QXk1Bwd5aRKI3Ol80w/exec";
 
 const images = [
@@ -209,162 +239,307 @@ let rankBarChart, radarChart;
 // 初始化按钮
 const ids = ["a1","a2","a3","b1","b2","b3"];
 ids.forEach(id=>{
-  const g = document.getElementById(id+"-group");
+  const group = document.getElementById(id+"-group");
   for(let i=1;i<=10;i++){
-    const b = document.createElement("button");
-    b.className="score-btn";
-    b.textContent=i;
-    b.onclick=()=>setScore(id,i);
-    g.appendChild(b);
+    const btn = document.createElement("button");
+    btn.className = "score-btn";
+    btn.textContent = i;
+    btn.onclick = () => setScore(id, i);
+    group.appendChild(btn);
   }
 });
 
-function setScore(id,val){
+// 按钮设置分数
+function setScore(id, val){
   if(!currentUid){
-    document.getElementById("loginTip").innerText="⚠️ 请先输入ID并登录！";
+    document.getElementById("loginTip").innerText = "⚠️ 请先输入评估ID并登录！";
     return;
   }
-  document.getElementById(id).value=val;
-  document.getElementById(id+"-slider").value=val;
-  document.querySelectorAll(`#${id}-group .score-btn`).forEach(x=>x.classList.remove("active"));
+  document.getElementById(id).value = val;
+  document.getElementById(id+"-slider").value = val;
+  document.querySelectorAll(`#${id}-group .score-btn`).forEach(b => b.classList.remove("active"));
   document.querySelector(`#${id}-group .score-btn:nth-child(${val})`).classList.add("active");
 }
 
+// 滑杆同步到分数
 function syncFromSlider(id){
-  const v = document.getElementById(id+"-slider").value;
-  setScore(id,v);
+  const val = document.getElementById(id+"-slider").value;
+  setScore(id, val);
 }
 
+// 切换打分模式
 function switchMode(){
-  const m = document.getElementById("scoreMode").value;
+  const mode = document.getElementById("scoreMode").value;
   ids.forEach(id=>{
-    document.getElementById(id+"-group").style.display=m==="btn"?"flex":"none";
-    document.getElementById(id+"-slider").style.display=m==="slider"?"block":"none";
-    document.getElementById(id).style.display=m==="input"?"inline-block":"none";
+    document.getElementById(id+"-group").style.display = mode === "btn" ? "flex" : "none";
+    document.getElementById(id+"-slider").style.display = mode === "slider" ? "block" : "none";
+    document.getElementById(id).style.display = mode === "input" ? "inline-block" : "none";
   });
 }
 
+// 随机切换AB组
 function nextPair(){
   do{
-    currentA=images[Math.floor(Math.random()*images.length)];
-    currentB=images[Math.floor(Math.random()*images.length)];
-  }while(currentA===currentB);
-  document.getElementById("imgA").src=currentA;
-  document.getElementById("imgB").src=currentB;
-  ids.forEach(id=>setScore(id,5));
+    currentA = images[Math.floor(Math.random()*images.length)];
+    currentB = images[Math.floor(Math.random()*images.length)];
+  }while(currentA === currentB);
+  document.getElementById("imgA").src = currentA;
+  document.getElementById("imgB").src = currentB;
+  ids.forEach(id=> setScore(id, 5));
 }
 
-function loginUser(){
-  const uid=document.getElementById("uid").value.trim();
+// 登录
+async function loginUser(){
+  const uid = document.getElementById("uid").value.trim();
   if(!uid){
-    document.getElementById("loginTip").innerText="⚠️ 请输入你的评估ID";
+    document.getElementById("loginTip").innerText = "⚠️ 请输入评估者ID";
     return;
   }
-  currentUid=uid;
-  document.getElementById("loginTip").innerText="✅ 已登录："+uid;
+  currentUid = uid;
+  document.getElementById("loginTip").innerText = "✅ 已登录："+uid;
   nextPair();
 }
 
+// 提交并自动下一组
 async function submitAndNext(){
   if(!currentUid){
-    document.getElementById("loginTip").innerText="⚠️ 请先登录才能提交！";
+    document.getElementById("loginTip").innerText = "⚠️ 请先登录评估者ID";
     return;
   }
-  const p={
-    uid:currentUid,imgA:currentA,imgB:currentB,
-    a1:+document.getElementById("a1").value,
-    a2:+document.getElementById("a2").value,
-    a3:+document.getElementById("a3").value,
-    b1:+document.getElementById("b1").value,
-    b2:+document.getElementById("b2").value,
-    b3:+document.getElementById("b3").value,
-    time:new Date().toLocaleString()
+  const payload = {
+    uid: currentUid,
+    imgA: currentA,
+    imgB: currentB,
+    a1: Number(document.getElementById("a1").value),
+    a2: Number(document.getElementById("a2").value),
+    a3: Number(document.getElementById("a3").value),
+    b1: Number(document.getElementById("b1").value),
+    b2: Number(document.getElementById("b2").value),
+    b3: Number(document.getElementById("b3").value),
+    time: new Date().toLocaleString()
   };
-  await fetch(API_URL,{method:"POST",mode:"no-cors",body:JSON.stringify(p)});
+  await fetch(API_URL,{
+    method:"POST",
+    mode:"no-cors",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(payload)
+  });
   alert("✅ 提交成功！已自动跳转到下一组");
   nextPair();
 }
 
-function getQrcode(){QRCode.toCanvas(document.getElementById("qrcode"),window.location.href)}
-function showResult(){document.getElementById("evalPage").style.display="none";document.getElementById("resultPage").style.display="block";loadAllScoreData()}
-function backEval(){document.getElementById("evalPage").style.display="block";document.getElementById("resultPage").style.display="none";document.getElementById("adminPage").style.display="none"}
-function goAdmin(){document.getElementById("evalPage").style.display="none";document.getElementById("adminPage").style.display="block"}
-function checkAdmin(){if(document.getElementById("adminPwd").value==="siqihu7"){document.getElementById("adminContent").style.display="block";loadAdminData()}else alert("密码错误")}
+// 二维码
+function getQrcode(){
+  QRCode.toCanvas(document.getElementById("qrcode"),window.location.href);
+}
 
+// 页面切换
+function showResult(){
+  document.getElementById("evalPage").style.display="none";
+  document.getElementById("resultPage").style.display="block";
+  loadAllScoreData();
+}
+function backEval(){
+  document.getElementById("evalPage").style.display="block";
+  document.getElementById("resultPage").style.display="none";
+  document.getElementById("adminPage").style.display="none";
+}
+function goAdmin(){
+  document.getElementById("evalPage").style.display="none";
+  document.getElementById("adminPage").style.display="block";
+}
+function checkAdmin(){
+  if(document.getElementById("adminPwd").value === "siqihu7"){
+    document.getElementById("adminContent").style.display="block";
+    loadAdminData();
+  }else alert("密码错误");
+}
+
+// 加载统计、计算均分+BT+图表
 async function loadAllScoreData(){
-  const r=await fetch(API_URL);
-  const d=(await r.json()).slice(1);
-  const map={};images.forEach(i=>map[i]={s1:0,s2:0,s3:0,c:0});
-  d.forEach(x=>{
-    const a=x[1],b=x[2];
-    map[a].s1+=+x[3];map[a].s2+=+x[4];map[a].s3+=+x[5];map[a].c++;
-    map[b].s1+=+x[6];map[b].s2+=+x[7];map[b].s3+=+x[8];map[b].c++;
+  const res = await fetch(API_URL);
+  const rows = await res.json();
+  const data = rows.slice(1);
+
+  const scoreMap = {};
+  images.forEach(name=>{
+    scoreMap[name] = {s1:0,s2:0,s3:0,count:0};
   });
-  const list=[];
-  for(let k in map){
-    const v=map[k],t=v.c||1;
-    const a1=(v.s1/t).toFixed(2),a2=(v.s2/t).toFixed(2),a3=(v.s3/t).toFixed(2);
-    list.push({n:k,a1,a2,a3,avg:((+a1++a2++a3)/3).toFixed(2)});
+
+  data.forEach(d=>{
+    if(!d[1]||!d[2]) return;
+    let imgA = d[1], imgB = d[2];
+    scoreMap[imgA].s1 += Number(d[3]);
+    scoreMap[imgA].s2 += Number(d[4]);
+    scoreMap[imgA].s3 += Number(d[5]);
+    scoreMap[imgA].count += 1;
+
+    scoreMap[imgB].s1 += Number(d[6]);
+    scoreMap[imgB].s2 += Number(d[7]);
+    scoreMap[imgB].s3 += Number(d[8]);
+    scoreMap[imgB].count += 1;
+  });
+
+  let resultList = [];
+  for(let key in scoreMap){
+    const item = scoreMap[key];
+    const cnt = item.count||1;
+    const avg1 = (item.s1/cnt).toFixed(2);
+    const avg2 = (item.s2/cnt).toFixed(2);
+    const avg3 = (item.s3/cnt).toFixed(2);
+    const totalAvg = ((Number(avg1)+Number(avg2)+Number(avg3))/3).toFixed(2);
+    resultList.push({name:key,avg1,avg2,avg3,totalAvg});
   }
-  const bt=calcBT(d,images);
-  list.sort((x,y)=>y.avg-x.avg);
-  const b=document.getElementById("scoreTableBody");
-  b.innerHTML=list.map(x=>`<tr><td>${x.n}</td><td>${x.a1}</td><td>${x.a2}</td><td>${x.a3}</td><td><b>${x.avg}</b></td><td>${bt[x.n].toFixed(2)}</td></tr>`).join("");
-  if(rankBarChart)rankBarChart.destroy();
-  rankBarChart=new Chart(document.getElementById("rankBarChart"),{
-    type:"bar",indexAxis:"y",data:{labels:list.map(x=>x.n),datasets:[{label:"均分",data:list.map(x=>x.avg),backgroundColor:"#3b82f6"}]}}
+
+  const btScore = calcBradleyTerry(data,images);
+  resultList.sort((a,b)=>Number(b.totalAvg)-Number(a.totalAvg));
+
+  // 渲染表格
+  const tb = document.getElementById("scoreTableBody");
+  tb.innerHTML = "";
+  resultList.forEach(item=>{
+    tb.innerHTML += `<tr>
+      <td>${item.name}</td>
+      <td>${item.avg1}</td>
+      <td>${item.avg2}</td>
+      <td>${item.avg3}</td>
+      <td><strong>${item.totalAvg}</strong></td>
+      <td>${btScore[item.name].toFixed(2)}</td>
+    </tr>`;
   });
-  const top6=list.slice(0,6);
-  if(radarChart)radarChart.destroy();
-  radarChart=new Chart(document.getElementById("radarChart"),{
-    type:"radar",data:{
-      labels:["外观","细节","色彩"],
-      datasets:top6.map((x,i)=>{
-        const c=["#3b82f6","#10b981","#f59e0b","#8b5cf6","#ec4899","#64748b"][i];
-        return {label:x.n,data:[x.a1,x.a2,x.a3],borderColor:c,background:c+"33"}
+
+  // 柱状图
+  if(rankBarChart) rankBarChart.destroy();
+  rankBarChart = new Chart(document.getElementById("rankBarChart"),{
+    type:"bar",indexAxis:"y",
+    data:{
+      labels:resultList.map(x=>x.name),
+      datasets:[{label:"综合平均得分",data:resultList.map(x=>x.totalAvg),backgroundColor:"#3b82f6"}]
+    },
+    options:{scales:{x:{min:0,max:10}}}
+  });
+
+  // 雷达图Top6
+  const top6 = resultList.slice(0,6);
+  if(radarChart) radarChart.destroy();
+  radarChart = new Chart(document.getElementById("radarChart"),{
+    type:"radar",
+    data:{
+      labels:["整体外观","元素细节","色彩质感"],
+      datasets:top6.map((item,idx)=>{
+        const colorArr = ["#3b82f6","#10b981","#f59e0b","#8b5cf6","#ec4899","#64748b"];
+        return {
+          label:item.name,
+          data:[item.avg1,item.avg2,item.avg3],
+          borderColor:colorArr[idx],
+          backgroundColor:colorArr[idx]+"33"
+        }
       })
-    }
+    },
+    options:{scales:{r:{min:0,max:10}}}
   });
 }
 
-function calcBT(raw,list){
-  const w={};list.forEach(i=>{w[i]={};list.forEach(j=>w[i][j]=0)});
-  raw.forEach(r=>{
-    const a=r[1],b=r[2];
-    const sa=+r[3]+r[4]+r[5],sb=+r[6]+r[7]+r[8];
-    if(sa>sb)w[a][b]++;if(sb>sa)w[b][a]++;
+// Bradley-Terry 模型计算
+function calcBradleyTerry(rawData,imgList){
+  const win = {};
+  imgList.forEach(i=>win[i]={});
+  imgList.forEach(i=>imgList.forEach(j=>win[i][j]=0));
+
+  rawData.forEach(row=>{
+    let imgA = row[1], imgB = row[2];
+    let aTotal = Number(row[3])+Number(row[4])+Number(row[5]);
+    let bTotal = Number(row[6])+Number(row[7])+Number(row[8]);
+    if(aTotal > bTotal) win[imgA][imgB]++;
+    if(bTotal > aTotal) win[imgB][imgA]++;
   });
-  const mu={};list.forEach(i=>mu[i]=1);
-  for(let t=0;t<15;t++)list.forEach(i=>{
-    let sw=0,sd=0;
-    list.forEach(j=>{if(i!==j){sw+=w[i][j];sd+=(w[i][j]+w[j][i])/(1+Math.exp(mu[j]-mu[i]))}});
-    mu[i]=sw/(sd||1);
+
+  const mu = {};
+  imgList.forEach(i=>mu[i]=1.0);
+  for(let t=0;t<15;t++){
+    imgList.forEach(i=>{
+      let sumWin = 0, sumDen = 0;
+      imgList.forEach(j=>{
+        if(i===j)return;
+        sumWin += win[i][j];
+        sumDen += (win[i][j]+win[j][i])/(1+Math.exp(mu[j]-mu[i]));
+      });
+      mu[i] = sumWin / (sumDen||1);
+    });
+  }
+  const vals = Object.values(mu);
+  const minV = Math.min(...vals);
+  const maxV = Math.max(...vals);
+  const res = {};
+  imgList.forEach(i=>{
+    res[i] = (mu[i]-minV)/(maxV-minV||1);
   });
-  const min=Math.min(...Object.values(mu)),max=Math.max(...Object.values(mu));
-  const res={};list.forEach(i=>res[i]=(mu[i]-min)/(max-min||1));
   return res;
 }
 
+// 管理员加载数据
 async function loadAdminData(){
-  const r=await fetch(API_URL);
-  const d=(await r.json()).slice(1);
-  const b=document.getElementById("adminBody");
-  b.innerHTML=d.map((x,i)=>`<tr><td>${i+1}</td><td>${x[0]}</td><td>${x[1]}</td><td>${x[2]}</td><td>${x[3]}/${x[4]}/${x[5]}</td><td>${x[6]}/${x[7]}/${x[8]}</td><td>${x[9]}</td><td><button class='danger' onclick='delSingle(${i+1})'>删</button></td></tr>`).join("");
+  const res = await fetch(API_URL);
+  const rows = await res.json();
+  const tb = document.getElementById("adminBody");
+  tb.innerHTML = "";
+  rows.slice(1).forEach((r,i)=>{
+    tb.innerHTML += `<tr>
+      <td>${i+1}</td>
+      <td>${r[0]}</td>
+      <td>${r[1]}</td>
+      <td>${r[2]}</td>
+      <td>${r[3]}/${r[4]}/${r[5]}</td>
+      <td>${r[6]}/${r[7]}/${r[8]}</td>
+      <td>${r[9]}</td>
+      <td><button class="danger" onclick="delSingle(${i+1})">删除</button></td>
+    </tr>`;
+  });
 }
 
-async function delSingle(i){if(confirm("确认删除？")){await fetch(API_URL+"?delSingle="+i);loadAdminData()}}
-async function delByUid(){const u=document.getElementById("delUidInput").value;if(!u)return;if(confirm("删除ID："+u)){await fetch(API_URL+"?delUid="+u);loadAdminData()}}
-async function clearAllData(){if(confirm("清空所有数据？")){await fetch(API_URL+"?clearAll=1");loadAdminData()}}
+// ========== 管理员删除功能 ==========
+// 单条删除
+async function delSingle(rowId){
+  if(!confirm("确定删除本条记录？"))return;
+  await fetch(`${API_URL}?delSingle=${rowId}`);
+  loadAdminData();
+  alert("单条删除成功");
+}
+
+// 按ID批量删除
+async function delByUid(){
+  const targetUid = document.getElementById("delUidInput").value.trim();
+  if(!targetUid) return alert("请输入要删除的评估ID");
+  if(!confirm(`确定删除【${targetUid}】全部数据？`))return;
+  await fetch(`${API_URL}?delUid=${targetUid}`);
+  loadAdminData();
+  alert(`ID：${targetUid} 所有记录已删除`);
+}
+
+// 一键清空全部
+async function clearAllData(){
+  if(!confirm("⚠️ 永久清空所有数据，不可恢复！"))return;
+  await fetch(`${API_URL}?clearAll=1`);
+  loadAdminData();
+  alert("全部数据已清空");
+}
+
+// 导出Excel
 async function exportExcel(){
-  const r=await fetch(API_URL);
-  const d=await r.json();
-  let csv="ID,imgA,imgB,a1,a2,a3,b1,b2,b3,time\n";
-  d.slice(1).forEach(x=>csv+=x.join(",")+"\n");
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
-  a.download="score.csv";a.click();
+  const res = await fetch(API_URL);
+  const rows = await res.json();
+  let csv = "评估ID,方案A,方案B,A外观,A细节,A色彩,B外观,B细节,B色彩,时间\n";
+  rows.slice(1).forEach(row=>{
+    csv += row.join(",")+"\n";
+  });
+  const blob = new Blob([csv],{type:"text/csv;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download="立面打分完整数据.csv";
+  a.click();
 }
 
+// 初始化：设置默认模式、生成第一组
 switchMode();
 </script>
 </body>
