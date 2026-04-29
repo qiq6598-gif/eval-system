@@ -171,28 +171,32 @@ th{background:#f3f4f6;font-weight:600}
   </div>
 </div>
 
-<!-- 统计页面：表格+柱状图+分组雷达图+BT值 -->
+<!-- 统计页面：表格+双柱状图+分组雷达图 -->
 <div id="resultPage" class="container" style="display:none">
   <div class="panel">
     <button onclick="backEval()">返回评估页面</button>
     <button class="export" onclick="exportExcel()">导出Excel原始数据</button>
   </div>
-  <!-- 第一行：柱状图 -->
+  <!-- 双柱状图：前15高→低 / 后15低→高 -->
   <div class="chart-row">
-    <div class="panel chart-box" style="grid-column: span 2;">
-      <h3>各方案综合得分排行榜</h3>
-      <canvas id="rankBarChart"></canvas>
+    <div class="panel chart-box">
+      <h3>综合得分前15（高→低）</h3>
+      <canvas id="barChartTop15"></canvas>
+    </div>
+    <div class="panel chart-box">
+      <h3>综合得分后15（低→高）</h3>
+      <canvas id="barChartBot15"></canvas>
     </div>
   </div>
-  <!-- 第二行：分组雷达图（和小提琴图一样左右分两组） -->
+  <!-- 分组雷达图 左123 右2456 -->
   <div class="chart-row">
     <div class="panel chart-box">
-      <h3>方案A 多维度雷达对比</h3>
-      <canvas id="radarChartA"></canvas>
+      <h3>v1/v2/v3 系列均值雷达</h3>
+      <canvas id="radarLeft"></canvas>
     </div>
     <div class="panel chart-box">
-      <h3>方案B 多维度雷达对比</h3>
-      <canvas id="radarChartB"></canvas>
+      <h3>v2/v4/v5/v6 系列均值雷达</h3>
+      <canvas id="radarRight"></canvas>
     </div>
   </div>
   <div class="panel">
@@ -260,9 +264,41 @@ const images = [
 "500_0.2.png","500_0.4.png","500_0.6.png","500_0.8.png","500_1.0.png"
 ];
 
+// 绑定系列分组
+const seriesMap = {
+  v1: images.filter(n=>n.startsWith("e3")),
+  v2: images.filter(n=>n.startsWith("e4")),
+  v3: images.filter(n=>n.startsWith("e5")),
+  v4: images.filter(n=>n.startsWith("re")),
+  v5: images.filter(n=>n.startsWith("con")),
+  v6: images.filter(n=>n.startsWith("500"))
+};
+
 let currentA, currentB;
 let currentUid = "";
-let rankBarChart, radarChartA, radarChartB;
+let barTop15, barBot15, radarLeft, radarRight;
+
+// 页面打开强制登录弹窗
+window.onload = function(){
+  let uid = "";
+  while(true){
+    uid = prompt("请先输入你的评估ID（数字或者字母）","");
+    if(uid === null){
+      alert("必须输入评估ID才能进入系统");
+      location.reload();
+      return;
+    }
+    // 校验：只能数字、字母
+    const reg = /^[A-Za-z0-9]+$/;
+    if(reg.test(uid)) break;
+    alert("ID只能是数字或者字母，请重新输入");
+  }
+  document.getElementById("uid").value = uid;
+  currentUid = uid;
+  document.getElementById("loginTip").innerText = "✅ 已自动登录："+uid;
+  switchMode();
+  nextPair();
+};
 
 // 初始化按钮
 const ids = ["a1","a2","a3","b1","b2","b3"];
@@ -320,8 +356,13 @@ function nextPair(){
 // 登录
 async function loginUser(){
   const uid = document.getElementById("uid").value.trim();
+  const reg = /^[A-Za-z0-9]+$/;
   if(!uid){
     document.getElementById("loginTip").innerText = "⚠️ 请输入评估者ID";
+    return;
+  }
+  if(!reg.test(uid)){
+    document.getElementById("loginTip").innerText = "⚠️ ID只能是数字或者字母";
     return;
   }
   currentUid = uid;
@@ -384,7 +425,24 @@ function checkAdmin(){
   }else alert("密码错误");
 }
 
-// 加载统计、计算均分+BT+图表（含分组雷达图）
+// 按系列求均值
+function getSeriesAvg(list, scoreMap){
+  let sum1=0,sum2=0,sum3=0,count=0;
+  list.forEach(name=>{
+    const item = scoreMap[name];
+    sum1 += item.s1/item.count;
+    sum2 += item.s2/item.count;
+    sum3 += item.s3/item.count;
+    count++;
+  });
+  return [
+    (sum1/count).toFixed(2),
+    (sum2/count).toFixed(2),
+    (sum3/count).toFixed(2)
+  ];
+}
+
+// 加载统计、计算均分+BT+双柱状图+分组雷达
 async function loadAllScoreData(){
   const res = await fetch(API_URL);
   const rows = await res.json();
@@ -421,6 +479,7 @@ async function loadAllScoreData(){
   }
 
   const btScore = calcBradleyTerry(data,images);
+  // 全局从高到低排序
   resultList.sort((a,b)=>Number(b.totalAvg)-Number(a.totalAvg));
 
   // 渲染表格
@@ -437,56 +496,67 @@ async function loadAllScoreData(){
     </tr>`;
   });
 
-  // 柱状图
-  if(rankBarChart) rankBarChart.destroy();
-  rankBarChart = new Chart(document.getElementById("rankBarChart"),{
+  // 切分前15、后15
+   const top15 = resultList.slice(0,15);
+  const bot15 = resultList.slice(15).reverse();
+
+  // 左柱状图：前15 高→低
+  if(barTop15) barTop15.destroy();
+  barTop15 = new Chart(document.getElementById("barChartTop15"),{
     type:"bar",
     data:{
-      labels:resultList.map(x=>x.name),
-      datasets:[{label:"综合平均得分",data:resultList.map(x=>x.totalAvg),backgroundColor:"#3b82f6"}]
+      labels:top15.map(x=>x.name),
+      datasets:[{label:"综合得分",data:top15.map(x=>x.totalAvg),backgroundColor:"#3b82f6"}]
     },
-    options:{
-      indexAxis:"y",
-      scales:{x:{min:0,max:10}}
-    }
+    options:{indexAxis:"y",scales:{x:{min:0,max:10}}}
   });
 
-  // 方案A雷达图（取前3名，避免重叠）
-  const topA = resultList.slice(0,3);
-  if(radarChartA) radarChartA.destroy();
-  radarChartA = new Chart(document.getElementById("radarChartA"),{
+  // 右柱状图：后15 反转 低→高
+  if(barBot15) barBot15.destroy();
+  barBot15 = new Chart(document.getElementById("barChartBot15"),{
+    type:"bar",
+    data:{
+      labels:bot15.map(x=>x.name),
+      datasets:[{label:"综合得分",data:bot15.map(x=>x.totalAvg),backgroundColor:"#10b981"}]
+    },
+    options:{indexAxis:"y",scales:{x:{min:0,max:10}}}
+  });
+
+  // 各组均值
+  const v1Avg = getSeriesAvg(seriesMap.v1, scoreMap);
+  const v2Avg = getSeriesAvg(seriesMap.v2, scoreMap);
+  const v3Avg = getSeriesAvg(seriesMap.v3, scoreMap);
+  const v4Avg = getSeriesAvg(seriesMap.v4, scoreMap);
+  const v5Avg = getSeriesAvg(seriesMap.v5, scoreMap);
+  const v6Avg = getSeriesAvg(seriesMap.v6, scoreMap);
+
+  // 左雷达：1、2、3
+  if(radarLeft) radarLeft.destroy();
+  radarLeft = new Chart(document.getElementById("radarLeft"),{
     type:"radar",
     data:{
       labels:["整体外观","元素细节","色彩质感"],
-      datasets:topA.map((item,idx)=>{
-        const colorArr = ["#3b82f6","#10b981","#f59e0b"];
-        return {
-          label:item.name,
-          data:[item.avg1,item.avg2,item.avg3],
-          borderColor:colorArr[idx],
-          backgroundColor:colorArr[idx]+"33"
-        }
-      })
+      datasets:[
+        {label:"v1(e3)",data:v1Avg,borderColor:"#3b82f6",backgroundColor:"#3b82f633"},
+        {label:"v2(e4)",data:v2Avg,borderColor:"#10b981",backgroundColor:"#10b98133"},
+        {label:"v3(e5)",data:v3Avg,borderColor:"#f59e0b",backgroundColor:"#f59e0b33"}
+      ]
     },
     options:{scales:{r:{min:0,max:10}}}
   });
 
-  // 方案B雷达图（取4-6名，和A分组）
-  const topB = resultList.slice(3,6);
-  if(radarChartB) radarChartB.destroy();
-  radarChartB = new Chart(document.getElementById("radarChartB"),{
+  // 右雷达：2、4、5、6
+  if(radarRight) radarRight.destroy();
+  radarRight = new Chart(document.getElementById("radarRight"),{
     type:"radar",
     data:{
       labels:["整体外观","元素细节","色彩质感"],
-      datasets:topB.map((item,idx)=>{
-        const colorArr = ["#8b5cf6","#ec4899","#64748b"];
-        return {
-          label:item.name,
-          data:[item.avg1,item.avg2,item.avg3],
-          borderColor:colorArr[idx],
-          backgroundColor:colorArr[idx]+"33"
-        }
-      })
+      datasets:[
+        {label:"v2(e4)",data:v2Avg,borderColor:"#10b981",backgroundColor:"#10b98133"},
+        {label:"v4(re)",data:v4Avg,borderColor:"#8b5cf6",backgroundColor:"#8b5cf633"},
+        {label:"v5(con)",data:v5Avg,borderColor:"#ec4899",backgroundColor:"#ec489933"},
+        {label:"v6(500)",data:v6Avg,borderColor:"#64748b",backgroundColor:"#64748b33"}
+      ]
     },
     options:{scales:{r:{min:0,max:10}}}
   });
@@ -590,9 +660,6 @@ async function exportExcel(){
   a.download="立面打分完整数据.csv";
   a.click();
 }
-
-// 初始化：设置默认模式、生成第一组
-switchMode();
 </script>
 </body>
 </html>
