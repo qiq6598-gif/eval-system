@@ -18,25 +18,15 @@ body{background:#f8f9fa;color:#2c3e50;padding:2rem}
 .bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
 .score-wrap{display:flex;justify-content:space-around;gap:30px;margin:24px 0}
 .score-block{width:45%}
-.score-item{margin:16px 0;text-align:center}
-.score-item label{display:block;margin-bottom:8px;font-weight:500}
-
-/* 快捷按钮样式 */
-.score-btn-group{display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin:8px 0}
-.score-btn{width:36px;height:36px;border-radius:6px;border:1px solid #ccc;background:#f8f8f8;cursor:pointer;font-size:14px}
-.score-btn.active{background:#3b82f6;color:white;border-color:#3b82f6}
-
-/* 滑杆样式 */
-.score-slider{width:100%;height:8px;border-radius:4px;background:#e5e7eb;margin-top:6px;outline:none}
-.score-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;background:#3b82f6;cursor:pointer}
-
-.score-input{width:80px;padding:8px;text-align:center;border-radius:6px;border:1px solid #ccc}
-.mode-select{margin-bottom:10px;font-size:14px}
-
+.score-item{margin:12px 0;text-align:center}
+.score-item label{display:block;margin-bottom:6px;font-weight:500}
+.score-item input{width:100px;padding:8px;border:1px solid #d1d5db;border-radius:6px;text-align:center;font-size:15px}
 input{padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;width:180px}
 button{padding:8px 16px;border:none;border-radius:6px;background:#3b82f6;color:#fff;cursor-pointer}
 button.secondary{background:#64748b}
+button.warn{background:#f59e0b}
 button.danger{background:#ef4444}
+button.group-btn{background:#10b981}
 button.export{background:#722ed1}
 #qrcode{width:160px;margin:10px auto;display:block;border-radius:8px}
 .table-box{overflow-x:auto;margin-top:12px}
@@ -45,7 +35,8 @@ th,td{border:1px solid #e5e7eb;padding:10px;text-align:center;font-size:14px}
 th{background:#f3f4f6;font-weight:600}
 .chart-row{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px}
 .chart-box{height:420px;position:relative}
-#evalPage,#resultPage,#adminPage{display:block}
+.empty-chart-msg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#9ca3af;font-size:16px;display:none}
+#evalPage,#resultPage,#groupResultPage,#adminPage{display:none}
 .reference-card{text-align:center}
 .reference-img{max-height:350px;max-width:100%;object-fit:contain;border-radius:8px}
 .admin-lock{margin-bottom:16px;display:flex;gap:10px;align-items:center}
@@ -59,21 +50,20 @@ th{background:#f3f4f6;font-weight:600}
   <div class="panel">
     <div class="title">AI立面翻新方案 专家多维度打分评估系统</div>
     <div class="bar">
-      <input id="uid" placeholder="请先输入评估者ID">
-      <button onclick="loginUser()">登录/开始评估</button>
+      <input id="uid" placeholder="请输入评估者ID">
+      <button onclick="loginUser()">登录/继续评估</button>
       <button onclick="getQrcode()">生成分享二维码</button>
       <button class="secondary" onclick="showResult()">评分统计&排行榜</button>
       <button class="export" onclick="exportExcel()">导出全部数据Excel</button>
       <button class="danger" onclick="goAdmin()">管理员后台</button>
     </div>
-    <div id="loginTip" style="color:red;margin-top:10px;font-weight:bold;"></div>
     <img id="qrcode">
   </div>
 
   <div class="panel reference-card">
     <div class="title">现实翻新案例拍摄参考图</div>
     <img class="reference-img" src="reference.png">
-    <div class="desc">以真实翻新建筑为参照，对AI翻新方案1-10分量化打分（支持按钮/滑杆/输入三种方式）</div>
+    <div class="desc">以真实翻新建筑为参照，对AI翻新方案1-10分量化打分</div>
   </div>
 
   <div class="grid">
@@ -88,71 +78,48 @@ th{background:#f3f4f6;font-weight:600}
   </div>
 
   <div class="panel">
-    <div class="title">打分方式：
-      <select class="mode-select" id="scoreMode" onchange="switchMode()">
-        <option value="btn">按钮点选（推荐）</option>
-        <option value="slider">滑动条</option>
-        <option value="input">手动输入</option>
-      </select>
-    </div>
+    <div class="title">多维度打分（1~10分，分数越高越贴合真实）</div>
     <div class="score-wrap">
       <div class="score-block">
         <h3 style="text-align:center;margin-bottom:16px;color:#2b6cb0">方案 A</h3>
-        <!-- 方案A 外观 -->
         <div class="score-item">
           <label>① 整体外观协调度</label>
-          <div class="score-btn-group" id="a1-group"></div>
-          <input type="range" class="score-slider" id="a1-slider" min="1" max="10" value="5" style="display:none" oninput="syncFromSlider('a1')">
-          <input type="number" class="score-input" id="a1" min="1" max="10" value="5" style="display:none">
+          <input type="number" id="a1" min="1" max="10" value="5">
         </div>
-        <!-- 方案A 细节 -->
         <div class="score-item">
           <label>② 建筑元素细节合理性</label>
-          <div class="score-btn-group" id="a2-group"></div>
-          <input type="range" class="score-slider" id="a2-slider" min="1" max="10" value="5" style="display:none" oninput="syncFromSlider('a2')">
-          <input type="number" class="score-input" id="a2" min="1" max="10" value="5" style="display:none">
+          <input type="number" id="a2" min="1" max="10" value="5">
         </div>
-        <!-- 方案A 色彩 -->
         <div class="score-item">
           <label>③ 色彩质感自然度</label>
-          <div class="score-btn-group" id="a3-group"></div>
-          <input type="range" class="score-slider" id="a3-slider" min="1" max="10" value="5" style="display:none" oninput="syncFromSlider('a3')">
-          <input type="number" class="score-input" id="a3" min="1" max="10" value="5" style="display:none">
+          <input type="number" id="a3" min="1" max="10" value="5">
         </div>
       </div>
       <div class="score-block">
         <h3 style="text-align:center;margin-bottom:16px;color:#2b6cb0">方案 B</h3>
-        <!-- 方案B 外观 -->
         <div class="score-item">
           <label>① 整体外观协调度</label>
-          <div class="score-btn-group" id="b1-group"></div>
-          <input type="range" class="score-slider" id="b1-slider" min="1" max="10" value="5" style="display:none" oninput="syncFromSlider('b1')">
-          <input type="number" class="score-input" id="b1" min="1" max="10" value="5" style="display:none">
+          <input type="number" id="b1" min="1" max="10" value="5">
         </div>
-        <!-- 方案B 细节 -->
         <div class="score-item">
           <label>② 建筑元素细节合理性</label>
-          <div class="score-btn-group" id="b2-group"></div>
-          <input type="range" class="score-slider" id="b2-slider" min="1" max="10" value="5" style="display:none" oninput="syncFromSlider('b2')">
-          <input type="number" class="score-input" id="b2" min="1" max="10" value="5" style="display:none">
+          <input type="number" id="b2" min="1" max="10" value="5">
         </div>
-        <!-- 方案B 色彩 -->
         <div class="score-item">
           <label>③ 色彩质感自然度</label>
-          <div class="score-btn-group" id="b3-group"></div>
-          <input type="range" class="score-slider" id="b3-slider" min="1" max="10" value="5" style="display:none" oninput="syncFromSlider('b3')">
-          <input type="number" class="score-input" id="b3" min="1" max="10" value="5" style="display:none">
+          <input type="number" id="b3" min="1" max="10" value="5">
         </div>
       </div>
     </div>
     <div style="text-align:center; margin-top:20px;">
-      <button onclick="submitAndNext()" style="padding:12px 30px; font-size:16px;">提交并自动下一组</button>
+      <button onclick="submitScore()" style="padding:12px 30px; font-size:16px;">提交本组打分</button>
+      <button onclick="nextPair()" style="padding:12px 30px; font-size:16px; margin-left:10px;">下一组对比图</button>
     </div>
   </div>
 </div>
 
 <!-- 统计页面：表格+柱状图+雷达图+BT值 -->
-<div id="resultPage" class="container" style="display:none">
+<div id="resultPage" class="container">
   <div class="panel">
     <button onclick="backEval()">返回评估页面</button>
     <button class="export" onclick="exportExcel()">导出Excel原始数据</button>
@@ -186,7 +153,7 @@ th{background:#f3f4f6;font-weight:600}
 </div>
 
 <!-- 管理员后台：单条删除 / 按ID删 / 全删 -->
-<div id="adminPage" class="container" style="display:none">
+<div id="adminPage" class="container">
   <div class="panel">
     <div class="title">管理员后台｜数据管理</div>
     <div class="admin-lock">
@@ -236,47 +203,6 @@ let currentA, currentB;
 let currentUid = "";
 let rankBarChart, radarChart;
 
-// 初始化按钮
-const ids = ["a1","a2","a3","b1","b2","b3"];
-ids.forEach(id=>{
-  const group = document.getElementById(id+"-group");
-  for(let i=1;i<=10;i++){
-    const btn = document.createElement("button");
-    btn.className = "score-btn";
-    btn.textContent = i;
-    btn.onclick = () => setScore(id, i);
-    group.appendChild(btn);
-  }
-});
-
-// 按钮设置分数
-function setScore(id, val){
-  if(!currentUid){
-    document.getElementById("loginTip").innerText = "⚠️ 请先输入评估ID并登录！";
-    return;
-  }
-  document.getElementById(id).value = val;
-  document.getElementById(id+"-slider").value = val;
-  document.querySelectorAll(`#${id}-group .score-btn`).forEach(b => b.classList.remove("active"));
-  document.querySelector(`#${id}-group .score-btn:nth-child(${val})`).classList.add("active");
-}
-
-// 滑杆同步到分数
-function syncFromSlider(id){
-  const val = document.getElementById(id+"-slider").value;
-  setScore(id, val);
-}
-
-// 切换打分模式
-function switchMode(){
-  const mode = document.getElementById("scoreMode").value;
-  ids.forEach(id=>{
-    document.getElementById(id+"-group").style.display = mode === "btn" ? "flex" : "none";
-    document.getElementById(id+"-slider").style.display = mode === "slider" ? "block" : "none";
-    document.getElementById(id).style.display = mode === "input" ? "inline-block" : "none";
-  });
-}
-
 // 随机切换AB组
 function nextPair(){
   do{
@@ -285,27 +211,20 @@ function nextPair(){
   }while(currentA === currentB);
   document.getElementById("imgA").src = currentA;
   document.getElementById("imgB").src = currentB;
-  ids.forEach(id=> setScore(id, 5));
 }
 
 // 登录
 async function loginUser(){
   const uid = document.getElementById("uid").value.trim();
-  if(!uid){
-    document.getElementById("loginTip").innerText = "⚠️ 请输入评估者ID";
-    return;
-  }
+  if(!uid) return alert("请输入评估者ID");
   currentUid = uid;
-  document.getElementById("loginTip").innerText = "✅ 已登录："+uid;
+  alert("评估身份确认："+uid);
   nextPair();
 }
 
-// 提交并自动下一组
-async function submitAndNext(){
-  if(!currentUid){
-    document.getElementById("loginTip").innerText = "⚠️ 请先登录评估者ID";
-    return;
-  }
+// 提交打分 → 完整6项分数传给后端，表格字段清晰
+async function submitScore(){
+  if(!currentUid) return alert("请先登录评估者ID");
   const payload = {
     uid: currentUid,
     imgA: currentA,
@@ -324,10 +243,9 @@ async function submitAndNext(){
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify(payload)
   });
-  alert("✅ 提交成功！已自动跳转到下一组");
+  alert("打分提交成功，数据已正确写入表格");
   nextPair();
 }
-
 // 二维码
 function getQrcode(){
   QRCode.toCanvas(document.getElementById("qrcode"),window.location.href);
@@ -369,6 +287,7 @@ async function loadAllScoreData(){
   data.forEach(d=>{
     if(!d[1]||!d[2]) return;
     let imgA = d[1], imgB = d[2];
+    // A分数 d3 d4 d5 ｜ B分数 d6 d7 d8
     scoreMap[imgA].s1 += Number(d[3]);
     scoreMap[imgA].s2 += Number(d[4]);
     scoreMap[imgA].s3 += Number(d[5]);
@@ -539,8 +458,8 @@ async function exportExcel(){
   a.click();
 }
 
-// 初始化：设置默认模式、生成第一组
-switchMode();
+// 初始化
+nextPair();
 </script>
 </body>
 </html>
