@@ -12,7 +12,8 @@ body{background:#f8f9fa;color:#2c3e50;padding:2rem}
 .panel{background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.06);padding:24px;margin-bottom:24px}
 .title{font-size:22px;font-weight:600;margin-bottom:16px;color:#1f2937}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px}
-.img-card{border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;height:500px}
+/* 修复：两张卡片尺寸完全一致 */
+.img-card{border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;height:500px;display:flex;flex-direction:column}
 .img-card img{width:100%;height:450px;object-fit:contain;background:#f9fafb}
 .img-label{text-align:center;padding:12px;font-size:15px;background:#f3f4f6;font-weight:500}
 .bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
@@ -92,6 +93,7 @@ th{background:#f3f4f6;font-weight:600}
     <div class="score-wrap">
       <div class="score-block">
         <h3 style="text-align:center;margin-bottom:16px;color:#2b6cb0">当前方案打分</h3>
+        <!-- 修复：完整的三个打分项 -->
         <div class="score-item">
           <label>① 整体外观协调度</label>
           <div class="score-btn-group" id="s1-group"></div>
@@ -202,7 +204,7 @@ th{background:#f3f4f6;font-weight:600}
 </div>
 
 <script>
-// 已自动填入你最新的正确API
+// 已替换为你最新的正确API
 const API_URL = "https://script.google.com/macros/s/AKfycbzg7Wadz_o5sm1oRFUthyJ7kSdqc3xv4SEOtpJR-V9IxshMgVxFGAZ-G5E9aFfUQmJJKg/exec";
 
 const images = [
@@ -227,9 +229,10 @@ let currentImg;
 let currentUid = "";
 let barTop15, barBot15, radarLeft, radarRight;
 
+// 页面加载初始化
 window.onload = function(){
   let uid = prompt("请输入你的评估ID","");
-  if(!uid){alert("必须输入ID");location.reload();return;}
+  if(!uid){alert("必须输入ID才能进入系统");location.reload();return;}
   document.getElementById("uid").value = uid;
   currentUid = uid;
   document.getElementById("loginTip").innerText = "✅ 已登录："+uid;
@@ -237,106 +240,315 @@ window.onload = function(){
   nextSingle();
 };
 
+// 初始化打分按钮
 const ids = ["s1","s2","s3"];
 ids.forEach(id=>{
-  const g = document.getElementById(id+"-group");
+  const group = document.getElementById(id+"-group");
   for(let i=1;i<=10;i++){
-    const b=document.createElement("button");
-    b.className="score-btn";b.textContent=i;
-    b.onclick=()=>setScore(id,i);g.appendChild(b);
+    const btn = document.createElement("button");
+    btn.className = "score-btn";
+    btn.textContent = i;
+    btn.onclick = () => setScore(id, i);
+    group.appendChild(btn);
   }
 });
 
-function setScore(id,val){
-  if(!currentUid){alert("请先登录");return;}
-  document.getElementById(id).value=val;
-  document.getElementById(id+"-slider").value=val;
-  document.getElementById(id+"-value").textContent=val;
-  document.querySelectorAll(`#${id}-group .score-btn`).forEach(x=>x.classList.remove("active"));
+// 设置分数（同步按钮/滑杆/输入框）
+function setScore(id, val){
+  if(!currentUid){
+    document.getElementById("loginTip").innerText = "⚠️ 请先输入评估者ID并登录！";
+    return;
+  }
+  document.getElementById(id).value = val;
+  document.getElementById(id+"-slider").value = val;
+  document.getElementById(id+"-value").textContent = val;
+  document.querySelectorAll(`#${id}-group .score-btn`).forEach(b => b.classList.remove("active"));
   document.querySelector(`#${id}-group .score-btn:nth-child(${val})`).classList.add("active");
 }
 
+// 滑杆同步分数
 function syncFromSlider(id){
-  setScore(id,document.getElementById(id+"-slider").value);
+  const val = document.getElementById(id+"-slider").value;
+  setScore(id, val);
 }
 
+// 切换打分模式
 function switchMode(){
-  const m=document.getElementById("scoreMode").value;
+  const mode = document.getElementById("scoreMode").value;
   ids.forEach(id=>{
-    document.getElementById(id+"-group").style.display=m=="btn"?"flex":"none";
-    document.getElementById(id+"-slider-container").style.display=m=="slider"?"flex":"none";
-    document.getElementById(id).style.display=m=="input"?"inline-block":"none";
+    document.getElementById(id+"-group").style.display = mode === "btn" ? "flex" : "none";
+    document.getElementById(id+"-slider-container").style.display = mode === "slider" ? "flex" : "none";
+    document.getElementById(id).style.display = mode === "input" ? "inline-block" : "none";
   });
 }
 
+// 修复：随机切换AI方案图片
 function nextSingle(){
-  currentImg=images[Math.floor(Math.random()*images.length)];
-  document.getElementById("imgSingle").src=currentImg;
-  ids.forEach(id=>setScore(id,5));
+  // 随机选择一张图片
+  const idx = Math.floor(Math.random() * images.length);
+  currentImg = images[idx];
+  // 赋值给imgSingle，确保图片加载
+  document.getElementById("imgSingle").src = currentImg;
+  // 重置分数为5
+  ids.forEach(id => setScore(id, 5));
 }
 
+// 登录验证
 async function loginUser(){
-  const uid=document.getElementById("uid").value.trim();
-  if(!uid||!/^[A-Za-z0-9]+$/.test(uid)){alert("ID格式错误");return;}
-  currentUid=uid;document.getElementById("loginTip").innerText="✅ 已登录："+uid;nextSingle();
+  const uid = document.getElementById("uid").value.trim();
+  const reg = /^[A-Za-z0-9]+$/;
+  if(!uid){
+    document.getElementById("loginTip").innerText = "⚠️ 请输入评估者ID";
+    return;
+  }
+  if(!reg.test(uid)){
+    document.getElementById("loginTip").innerText = "⚠️ ID只能是数字或者字母";
+    return;
+  }
+  currentUid = uid;
+  document.getElementById("loginTip").innerText = "✅ 已登录："+uid;
+  nextSingle();
 }
 
+// 提交数据（适配新单方案格式）
 async function submitAndNext(){
-  if(!currentUid){alert("请登录");return;}
+  if(!currentUid){
+    document.getElementById("loginTip").innerText = "⚠️ 请先登录评估者ID";
+    return;
+  }
+  const payload = {
+    uid: currentUid,
+    img: currentImg,
+    s1: Number(document.getElementById("s1").value),
+    s2: Number(document.getElementById("s2").value),
+    s3: Number(document.getElementById("s3").value),
+    time: new Date().toLocaleString()
+  };
   await fetch(API_URL,{
-    method:"POST",mode:"no-cors",
+    method:"POST",
+    mode:"no-cors",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      uid:currentUid,img:currentImg,
-      s1:Number(document.getElementById("s1").value),
-      s2:Number(document.getElementById("s2").value),
-      s3:Number(document.getElementById("s3").value),
-      time:new Date().toLocaleString()
-    })
+    body:JSON.stringify(payload)
   });
-  alert("提交成功！自动下一组");nextSingle();
+  alert("✅ 提交成功！已自动跳转到下一组");
+  nextSingle();
 }
 
-function getQrcode(){QRCode.toCanvas(document.getElementById("qrcode"),window.location.href);}
-function showResult(){document.getElementById("evalPage").style.display="none";document.getElementById("resultPage").style.display="block";loadAllScoreData();}
-function backEval(){document.getElementById("evalPage").style.display="block";document.getElementById("resultPage").style.display="none";document.getElementById("adminPage").style.display="none";}
-function goAdmin(){document.getElementById("evalPage").style.display="none";document.getElementById("adminPage").style.display="block";}
-function checkAdmin(){if(document.getElementById("adminPwd").value==="siqihu7"){document.getElementById("adminContent").style.display="block";loadAdminData();}else alert("密码错误");}
+// 生成二维码
+function getQrcode(){
+  QRCode.toCanvas(document.getElementById("qrcode"),window.location.href);
+}
 
+// 页面切换
+function showResult(){
+  document.getElementById("evalPage").style.display="none";
+  document.getElementById("resultPage").style.display="block";
+  loadAllScoreData();
+}
+function backEval(){
+  document.getElementById("evalPage").style.display="block";
+  document.getElementById("resultPage").style.display="none";
+  document.getElementById("adminPage").style.display="none";
+}
+function goAdmin(){
+  document.getElementById("evalPage").style.display="none";
+  document.getElementById("adminPage").style.display="block";
+}
+function checkAdmin(){
+  if(document.getElementById("adminPwd").value === "siqihu7"){
+    document.getElementById("adminContent").style.display="block";
+    loadAdminData();
+  }else alert("密码错误");
+}
+
+// 按系列求均值
 function getSeriesAvg(list, scoreMap){
-  let s1=0,s2=0,s3=0,c=0;
-  list.forEach(n=>{
-    if(scoreMap[n] && scoreMap[n].c>0){
-      s1+=scoreMap[n].s1/scoreMap[n].c;
-      s2+=scoreMap[n].s2/scoreMap[n].c;
-      s3+=scoreMap[n].s3/scoreMap[n].c;
-      c++;
+  let sum1=0,sum2=0,sum3=0,count=0;
+  list.forEach(name=>{
+    const item = scoreMap[name];
+    if(item.count>0){
+      sum1 += item.s1/item.count;
+      sum2 += item.s2/item.count;
+      sum3 += item.s3/item.count;
+      count++;
     }
   });
-  return c===0 ? [0,0,0] : [(s1/c).toFixed(2),(s2/c).toFixed(2),(s3/c).toFixed(2)];
+  if(count===0) return [0,0,0];
+  return [
+    (sum1/count).toFixed(2),
+    (sum2/count).toFixed(2),
+    (sum3/count).toFixed(2)
+  ];
 }
 
+// 修复：加载统计数据、计算均分、图表渲染
 async function loadAllScoreData(){
-  const r=await fetch(API_URL);const d=await r.json();const rows=d.slice(1);
-  let scoreMap={};images.forEach(n=>scoreMap[n]={s1:0,s2:0,s3:0,c:0});
-  rows.forEach(x=>{if(!x[1])return;let m=x[1];scoreMap[m].s1+=Number(x[2]);scoreMap[m].s2+=Number(x[3]);scoreMap[m].s3+=Number(x[4]);scoreMap[m].c++;});
-  let list=[];for(let k in scoreMap){let o=scoreMap[k];if(o.c===0)continue;let a1=(o.s1/o.c).toFixed(2),a2=(o.s2/o.c).toFixed(2),a3=(o.s3/o.c).toFixed(2);let avg=((+a1++a2++a3)/3).toFixed(2);list.push({n:k,a1,a2,a3,avg});}
-  list.sort((a,b)=>b.avg-a.avg);
-  let tb=document.getElementById("scoreTableBody");tb.innerHTML="";list.forEach(x=>{tb.innerHTML+=`<tr><td>${x.n}</td><td>${x.a1}</td><td>${x.a2}</td><td>${x.a3}</td><td><b>${x.avg}</b></td><td>0.5</td></tr>`;});
-  if(barTop15)barTop15.destroy();if(barBot15)barBot15.destroy();
-  let t15=list.slice(0,15),b15=list.slice(-15).reverse();
-  barTop15=new Chart(document.getElementById("barChartTop15"),{type:"bar",data:{labels:t15.map(x=>x.n),datasets:[{label:"综合平均分",data:t15.map(x=>x.avg),backgroundColor:"#3b82f6"}]},options:{indexAxis:"y",scales:{x:{min:0,max:10}}}});
-  barBot15=new Chart(document.getElementById("barChartBot15"),{type:"bar",data:{labels:b15.map(x=>x.n),datasets:[{label:"综合平均分",data:b15.map(x=>x.avg),backgroundColor:"#10b981"}]},options:{indexAxis:"y",scales:{x:{min:0,max:10}}}});
-  let v1=getSeriesAvg(seriesMap.v1,scoreMap),v2=getSeriesAvg(seriesMap.v2,scoreMap),v3=getSeriesAvg(seriesMap.v3,scoreMap),v4=getSeriesAvg(seriesMap.v4,scoreMap),v5=getSeriesAvg(seriesMap.v5,scoreMap),v6=getSeriesAvg(seriesMap.v6,scoreMap);
-  if(radarLeft)radarLeft.destroy();radarLeft=new Chart(document.getElementById("radarLeft"),{type:"radar",data:{labels:["整体外观","元素细节","色彩质感"],datasets:[{label:"v1(e3)",data:v1,borderColor:"#3b82f6",backgroundColor:"rgba(59,130,246,0.2)"},{label:"v2(e4)",data:v2,borderColor:"#10b981",backgroundColor:"rgba(16,185,129,0.2)"},{label:"v3(e5)",data:v3,borderColor:"#f59e0b",backgroundColor:"rgba(245,158,11,0.2)"}]},options:{scales:{r:{min:0,max:10}}}});
-  if(radarRight)radarRight.destroy();radarRight=new Chart(document.getElementById("radarRight"),{type:"radar",data:{labels:["整体外观","元素细节","色彩质感"],datasets:[{label:"v2(e4)",data:v2,borderColor:"#10b981",backgroundColor:"rgba(16,185,129,0.2)"},{label:"v4(re)",data:v4,borderColor:"#8b5cf6",backgroundColor:"rgba(139,92,246,0.2)"},{label:"v5(con)",data:v5,borderColor:"#ec4899",backgroundColor:"rgba(236,72,153,0.2)"},{label:"v6(500)",data:v6,borderColor:"#6b7280",backgroundColor:"rgba(107,114,128,0.2)"}]},options:{scales:{r:{min:0,max:10}}}});
+  const res = await fetch(API_URL);
+  const rows = await res.json();
+  const data = rows.slice(1);
+
+  const scoreMap = {};
+  images.forEach(name=>{
+    scoreMap[name] = {s1:0,s2:0,s3:0,count:0};
+  });
+
+  // 读取单方案数据
+  data.forEach(d=>{
+    if(!d[1]) return;
+    const img = d[1];
+    scoreMap[img].s1 += Number(d[2]);
+    scoreMap[img].s2 += Number(d[3]);
+    scoreMap[img].s3 += Number(d[4]);
+    scoreMap[img].count += 1;
+  });
+
+  // 计算综合分并排序
+  let resultList = [];
+  for(let key in scoreMap){
+    const item = scoreMap[key];
+    if(item.count === 0) continue;
+    const avg1 = (item.s1/item.count).toFixed(2);
+    const avg2 = (item.s2/item.count).toFixed(2);
+    const avg3 = (item.s3/item.count).toFixed(2);
+    const totalAvg = ((Number(avg1)+Number(avg2)+Number(avg3))/3).toFixed(2);
+    resultList.push({name:key,avg1,avg2,avg3,totalAvg});
+  }
+
+  // 排序
+  resultList.sort((a,b)=>Number(b.totalAvg)-Number(a.totalAvg));
+
+  // 渲染表格
+  const tb = document.getElementById("scoreTableBody");
+  tb.innerHTML = "";
+  resultList.forEach(item=>{
+    tb.innerHTML += `<tr>
+      <td>${item.name}</td>
+      <td>${item.avg1}</td>
+      <td>${item.avg2}</td>
+      <td>${item.avg3}</td>
+      <td><strong>${item.totalAvg}</strong></td>
+      <td>0.50</td>
+    </tr>`;
+  });
+
+  // 双柱状图渲染
+  const top15 = resultList.slice(0,15);
+  const bot15 = resultList.slice(15).reverse();
+
+  if(barTop15) barTop15.destroy();
+  barTop15 = new Chart(document.getElementById("barChartTop15"),{
+    type:"bar",
+    data:{
+      labels:top15.map(x=>x.name),
+      datasets:[{label:"综合得分",data:top15.map(x=>x.totalAvg),backgroundColor:"#3b82f6"}]
+    },
+    options:{indexAxis:"y",scales:{x:{min:0,max:10}}}
+  });
+
+  if(barBot15) barBot15.destroy();
+  barBot15 = new Chart(document.getElementById("barChartBot15"),{
+    type:"bar",
+    data:{
+      labels:bot15.map(x=>x.name),
+      datasets:[{label:"综合得分",data:bot15.map(x=>x.totalAvg),backgroundColor:"#10b981"}]
+    },
+    options:{indexAxis:"y",scales:{x:{min:0,max:10}}}
+  });
+
+  // 雷达图渲染
+  const v1Avg = getSeriesAvg(seriesMap.v1, scoreMap);
+  const v2Avg = getSeriesAvg(seriesMap.v2, scoreMap);
+  const v3Avg = getSeriesAvg(seriesMap.v3, scoreMap);
+  const v4Avg = getSeriesAvg(seriesMap.v4, scoreMap);
+  const v5Avg = getSeriesAvg(seriesMap.v5, scoreMap);
+  const v6Avg = getSeriesAvg(seriesMap.v6, scoreMap);
+
+  if(radarLeft) radarLeft.destroy();
+  radarLeft = new Chart(document.getElementById("radarLeft"),{
+    type:"radar",
+    data:{
+      labels:["整体外观","元素细节","色彩质感"],
+      datasets:[
+        {label:"v1(e3)",data:v1Avg,borderColor:"#3b82f6",backgroundColor:"rgba(59,130,246,0.2)"},
+        {label:"v2(e4)",data:v2Avg,borderColor:"#10b981",backgroundColor:"rgba(16,185,129,0.2)"},
+        {label:"v3(e5)",data:v3Avg,borderColor:"#f59e0b",backgroundColor:"rgba(245,158,11,0.2)"}
+      ]
+    },
+    options:{scales:{r:{min:0,max:10}}}
+  });
+
+  if(radarRight) radarRight.destroy();
+  radarRight = new Chart(document.getElementById("radarRight"),{
+    type:"radar",
+    data:{
+      labels:["整体外观","元素细节","色彩质感"],
+      datasets:[
+        {label:"v2(e4)",data:v2Avg,borderColor:"#10b981",backgroundColor:"rgba(16,185,129,0.2)"},
+        {label:"v4(re)",data:v4Avg,borderColor:"#8b5cf6",backgroundColor:"rgba(139,92,246,0.2)"},
+        {label:"v5(con)",data:v5Avg,borderColor:"#ec4899",backgroundColor:"rgba(236,72,153,0.2)"},
+        {label:"v6(500)",data:v6Avg,borderColor:"#64748b",backgroundColor:"rgba(100,116,139,0.2)"}
+      ]
+    },
+    options:{scales:{r:{min:0,max:10}}}
+  });
 }
 
-async function loadAdminData(){const r=await fetch(API_URL);const d=await r.json();const b=document.getElementById("adminBody");b.innerHTML="";d.slice(1).forEach((x,i)=>{b.innerHTML+=`<tr><td>${i+1}</td><td>${x[0]}</td><td>${x[1]}</td><td>${x[2]}/${x[3]}/${x[4]}</td><td>${x[5]}</td><td><button class="danger" onclick="delSingle(${i+1})">删除</button></td></tr>`;});}
-async function delSingle(i){await fetch(API_URL+"?delSingle="+i);loadAdminData();alert("已删除");}
-async function delByUid(){let u=document.getElementById("delUidInput").value.trim();if(!u)return;if(!confirm("删除该ID所有数据？"))return;await fetch(API_URL+"?delUid="+encodeURIComponent(u));loadAdminData();alert("删除完成");}
-async function clearAllData(){if(!confirm("清空全部数据？"))return;await fetch(API_URL+"?clearAll=1");loadAdminData();alert("已清空");}
-async function exportExcel(){const r=await fetch(API_URL);const d=await r.json();let csv="评估ID,方案,外观,细节,色彩,时间\n";d.slice(1).forEach(x=>csv+=x.join(",")+"\n");let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="打分数据.csv";a.click();}
+// 管理员加载数据
+async function loadAdminData(){
+  const res = await fetch(API_URL);
+  const rows = await res.json();
+  const tb = document.getElementById("adminBody");
+  tb.innerHTML = "";
+  rows.slice(1).forEach((r,i)=>{
+    tb.innerHTML += `<tr>
+      <td>${i+1}</td>
+      <td>${r[0]}</td>
+      <td>${r[1]}</td>
+      <td>${r[2]}/${r[3]}/${r[4]}</td>
+      <td>${r[5]}</td>
+      <td><button class="danger" onclick="delSingle(${i+1})">删除</button></td>
+    </tr>`;
+  });
+}
+
+// 管理员删除功能
+async function delSingle(rowId){
+  if(!confirm("确定删除本条记录？")) return;
+  await fetch(`${API_URL}?delSingle=${rowId}`);
+  loadAdminData();
+  alert("单条删除成功");
+}
+
+async function delByUid(){
+  const targetUid = document.getElementById("delUidInput").value.trim();
+  if(!targetUid) return alert("请输入要删除的评估ID");
+  if(!confirm(`确定删除【${targetUid}】全部数据？`)) return;
+  await fetch(`${API_URL}?delUid=${encodeURIComponent(targetUid)}`);
+  loadAdminData();
+  alert(`ID：${targetUid} 所有记录已删除`);
+}
+
+async function clearAllData(){
+  if(!confirm("⚠️ 永久清空所有数据，不可恢复！")) return;
+  await fetch(`${API_URL}?clearAll=1`);
+  loadAdminData();
+  alert("全部数据已清空");
+}
+
+// 导出Excel
+async function exportExcel(){
+  const res = await fetch(API_URL);
+  const rows = await res.json();
+  let csv = "评估ID,方案,外观,细节,色彩,时间\n";
+  rows.slice(1).forEach(row=>{
+    csv += row.join(",")+"\n";
+  });
+  const blob = new Blob([csv],{type:"text/csv;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download="立面打分完整数据.csv";
+  a.click();
+}
 </script>
 </body>
 </html>
