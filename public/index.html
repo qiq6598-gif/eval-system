@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>立面翻新｜专家打分评估系统</title>
+<title>AI立面翻新方案打分系统</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
 <style>
@@ -12,8 +12,8 @@ body{background:#f8f9fa;color:#2c3e50;padding:2rem}
 .panel{background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.06);padding:24px;margin-bottom:24px}
 .title{font-size:22px;font-weight:600;margin-bottom:16px;color:#1f2937}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px}
-.img-card{border-radius:12px;overflow:hidden;border:1px solid #e5e7eb}
-.img-card img{width:100%;height:450px;object-fit:contain;background:#f9fafb}
+.img-card{border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;height:500px;display:flex;flex-direction:column}
+.img-card img{width:100%;height:100%;object-fit:contain;background:#f9fafb}
 .img-label{text-align:center;padding:12px;font-size:15px;background:#f3f4f6;font-weight:500}
 .bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
 .score-wrap{display:flex;justify-content:center;gap:30px;margin:24px 0}
@@ -69,7 +69,7 @@ th{background:#f3f4f6;font-weight:600}
   <div class="grid">
     <div class="img-card">
       <img class="reference-img" src="reference.png">
-      <div class="img-label">现实翻新实拍参考图</div>
+      <div class="img-label">现实翻新案例拍摄参考图</div>
     </div>
     <div class="img-card">
       <img id="imgSingle">
@@ -78,7 +78,7 @@ th{background:#f3f4f6;font-weight:600}
   </div>
 
   <div class="panel reference-card">
-    <div class="desc">对照实拍实景，对AI翻新方案1-10分量化打分</div>
+    <div class="desc">以真实翻新建筑为参照，对AI翻新方案1-10分量化打分</div>
   </div>
 
   <div class="panel">
@@ -153,7 +153,7 @@ th{background:#f3f4f6;font-weight:600}
     </div>
   </div>
   <div class="panel">
-    <div class="title">打分汇总表｜单项均分 + 综合均分 + Bradley-Terry偏好值</div>
+    <div class="title">打分汇总表｜单项均分 + 综合均分 + 偏好值</div>
     <div class="table-box">
       <table>
         <tr>
@@ -202,7 +202,8 @@ th{background:#f3f4f6;font-weight:600}
 </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbypGdfoQYlNZtg0BwQAjgeAlml92AVJPaAjOHUaPqf5DrGmFz61QXk1Bwd5aRKI3Ol80w/exec";
+// 已自动替换成你最新的谷歌脚本链接
+const API_URL = "https://script.google.com/macros/s/AKfycbzg7Wadz_o5sm1oRFUthyJ7kSdqc3xv4SEOtpJR-V9IxshMgVxFGAZ-G5E9aFfUQmJJKg/exec";
 
 const images = [
 "e3_0.2.png","e3_0.4.png","e3_0.6.png","e3_0.8.png","e3_1.0.png",
@@ -213,271 +214,101 @@ const images = [
 "500_0.2.png","500_0.4.png","500_0.6.png","500_0.8.png","500_1.0.png"
 ];
 
-const seriesMap = {
-  v1: images.filter(n=>n.startsWith("e3")),
-  v2: images.filter(n=>n.startsWith("e4")),
-  v3: images.filter(n=>n.startsWith("e5")),
-  v4: images.filter(n=>n.startsWith("re")),
-  v5: images.filter(n=>n.startsWith("con")),
-  v6: images.filter(n=>n.startsWith("500"))
-};
-
 let currentImg;
 let currentUid = "";
 let barTop15, barBot15, radarLeft, radarRight;
 
 window.onload = function(){
-  let uid = "";
-  while(true){
-    uid = prompt("请先输入你的评估ID（数字或者字母）","");
-    if(uid === null){
-      alert("必须输入评估ID才能进入系统");
-      location.reload();
-      return;
-    }
-    const reg = /^[A-Za-z0-9]+$/;
-    if(reg.test(uid)) break;
-    alert("ID只能是数字或者字母，请重新输入");
-  }
+  let uid = prompt("请输入你的评估ID","");
+  if(!uid){alert("必须输入ID");location.reload();return;}
   document.getElementById("uid").value = uid;
   currentUid = uid;
-  document.getElementById("loginTip").innerText = "✅ 已自动登录："+uid;
+  document.getElementById("loginTip").innerText = "✅ 已登录："+uid;
   switchMode();
   nextSingle();
 };
 
 const ids = ["s1","s2","s3"];
 ids.forEach(id=>{
-  const group = document.getElementById(id+"-group");
+  const g = document.getElementById(id+"-group");
   for(let i=1;i<=10;i++){
-    const btn = document.createElement("button");
-    btn.className = "score-btn";
-    btn.textContent = i;
-    btn.onclick = () => setScore(id, i);
-    group.appendChild(btn);
+    const b=document.createElement("button");
+    b.className="score-btn";b.textContent=i;
+    b.onclick=()=>setScore(id,i);g.appendChild(b);
   }
 });
 
-function setScore(id, val){
-  if(!currentUid){
-    document.getElementById("loginTip").innerText = "⚠️ 请先输入评估者ID并登录！";
-    return;
-  }
-  document.getElementById(id).value = val;
-  document.getElementById(id+"-slider").value = val;
-  document.getElementById(id+"-value").textContent = val;
-  document.querySelectorAll(`#${id}-group .score-btn`).forEach(b => b.classList.remove("active"));
+function setScore(id,val){
+  if(!currentUid){alert("请先登录");return;}
+  document.getElementById(id).value=val;
+  document.getElementById(id+"-slider").value=val;
+  document.getElementById(id+"-value").textContent=val;
+  document.querySelectorAll(`#${id}-group .score-btn`).forEach(x=>x.classList.remove("active"));
   document.querySelector(`#${id}-group .score-btn:nth-child(${val})`).classList.add("active");
 }
 
 function syncFromSlider(id){
-  const val = document.getElementById(id+"-slider").value;
-  setScore(id, val);
+  setScore(id,document.getElementById(id+"-slider").value);
 }
 
 function switchMode(){
-  const mode = document.getElementById("scoreMode").value;
+  const m=document.getElementById("scoreMode").value;
   ids.forEach(id=>{
-    document.getElementById(id+"-group").style.display = mode === "btn" ? "flex" : "none";
-    document.getElementById(id+"-slider-container").style.display = mode === "slider" ? "flex" : "none";
-    document.getElementById(id).style.display = mode === "input" ? "inline-block" : "none";
+    document.getElementById(id+"-group").style.display=m=="btn"?"flex":"none";
+    document.getElementById(id+"-slider-container").style.display=m=="slider"?"flex":"none";
+    document.getElementById(id).style.display=m=="input"?"inline-block":"none";
   });
 }
 
 function nextSingle(){
-  currentImg = images[Math.floor(Math.random()*images.length)];
-  document.getElementById("imgSingle").src = currentImg;
-  ids.forEach(id=> setScore(id, 5));
+  currentImg=images[Math.floor(Math.random()*images.length)];
+  document.getElementById("imgSingle").src=currentImg;
+  ids.forEach(id=>setScore(id,5));
 }
 
 async function loginUser(){
-  const uid = document.getElementById("uid").value.trim();
-  const reg = /^[A-Za-z0-9]+$/;
-  if(!uid){
-    document.getElementById("loginTip").innerText = "⚠️ 请输入评估者ID";
-    return;
-  }
-  if(!reg.test(uid)){
-    document.getElementById("loginTip").innerText = "⚠️ ID只能是数字或者字母";
-    return;
-  }
-  currentUid = uid;
-  document.getElementById("loginTip").innerText = "✅ 已登录："+uid;
-  nextSingle();
+  const uid=document.getElementById("uid").value.trim();
+  if(!uid||!/^[A-Za-z0-9]+$/.test(uid)){alert("ID格式错误");return;}
+  currentUid=uid;document.getElementById("loginTip").innerText="✅ 已登录："+uid;nextSingle();
 }
 
 async function submitAndNext(){
-  if(!currentUid){
-    document.getElementById("loginTip").innerText = "⚠️ 请先登录评估者ID";
-    return;
-  }
-  const payload = {
-    uid: currentUid,
-    img: currentImg,
-    s1: Number(document.getElementById("s1").value),
-    s2: Number(document.getElementById("s2").value),
-    s3: Number(document.getElementById("s3").value),
-    time: new Date().toLocaleString()
-  };
+  if(!currentUid){alert("请登录");return;}
   await fetch(API_URL,{
-    method:"POST",
-    mode:"no-cors",
+    method:"POST",mode:"no-cors",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(payload)
+    body:JSON.stringify({
+      uid:currentUid,img:currentImg,
+      s1:Number(document.getElementById("s1").value),
+      s2:Number(document.getElementById("s2").value),
+      s3:Number(document.getElementById("s3").value),
+      time:new Date().toLocaleString()
+    })
   });
-  alert("✅ 提交成功！已自动跳转到下一组");
-  nextSingle();
+  alert("提交成功！自动下一组");nextSingle();
 }
 
-function getQrcode(){
-  QRCode.toCanvas(document.getElementById("qrcode"),window.location.href);
-}
-
-function showResult(){
-  document.getElementById("evalPage").style.display="none";
-  document.getElementById("resultPage").style.display="block";
-  loadAllScoreData();
-}
-function backEval(){
-  document.getElementById("evalPage").style.display="block";
-  document.getElementById("resultPage").style.display="none";
-  document.getElementById("adminPage").style.display="none";
-}
-function goAdmin(){
-  document.getElementById("evalPage").style.display="none";
-  document.getElementById("adminPage").style.display="block";
-}
-function checkAdmin(){
-  if(document.getElementById("adminPwd").value === "siqihu7"){
-    document.getElementById("adminContent").style.display="block";
-    loadAdminData();
-  }else alert("密码错误");
-}
-
-function getSeriesAvg(list, scoreMap){
-  let sum1=0,sum2=0,sum3=0,count=0;
-  list.forEach(name=>{
-    const item = scoreMap[name];
-    sum1 += item.s1/item.count;
-    sum2 += item.s2/item.count;
-    sum3 += item.s3/item.count;
-    count++;
-  });
-  return [
-    (sum1/count).toFixed(2),
-    (sum2/count).toFixed(2),
-    (sum3/count).toFixed(2)
-  ];
-}
+function getQrcode(){QRCode.toCanvas(document.getElementById("qrcode"),window.location.href);}
+function showResult(){document.getElementById("evalPage").style.display="none";document.getElementById("resultPage").style.display="block";loadAllScoreData();}
+function backEval(){document.getElementById("evalPage").style.display="block";document.getElementById("resultPage").style.display="none";document.getElementById("adminPage").style.display="none";}
+function goAdmin(){document.getElementById("evalPage").style.display="none";document.getElementById("adminPage").style.display="block";}
+function checkAdmin(){if(document.getElementById("adminPwd").value==="siqihu7"){document.getElementById("adminContent").style.display="block";loadAdminData();}else alert("密码错误");}
 
 async function loadAllScoreData(){
-  const res = await fetch(API_URL);
-  const rows = await res.json();
-  const data = rows.slice(1);
-  const scoreMap = {};
-  images.forEach(name=>scoreMap[name]={s1:0,s2:0,s3:0,count:0});
-  data.forEach(d=>{
-    if(!d[1])return;
-    let img=d[1];
-    scoreMap[img].s1+=Number(d[2]);
-    scoreMap[img].s2+=Number(d[3]);
-    scoreMap[img].s3+=Number(d[4]);
-    scoreMap[img].count++;
-  });
-  let resultList=[];
-  for(let k in scoreMap){
-    let o=scoreMap[k],c=o.count||1;
-    let a1=(o.s1/c).toFixed(2),a2=(o.s2/c).toFixed(2),a3=(o.s3/c).toFixed(2);
-    let avg=((+a1+a2+a3)/3).toFixed(2);
-    resultList.push({name:k,avg1:a1,avg2:a2,avg3:a3,totalAvg:avg});
-  }
-  const bt=calcBradleyTerry(data,images);
-  resultList.sort((a,b)=>b.totalAvg-a.totalAvg);
+  const r=await fetch(API_URL);const d=await r.json();const rows=d.slice(1);
+  let map={};images.forEach(n=>map[n]={s1:0,s2:0,s3:0,c:0});
+  rows.forEach(x=>{if(!x[1])return;let m=x[1];map[m].s1+=Number(x[2]);map[m].s2+=Number(x[3]);map[m].s3+=Number(x[4]);map[m].c++;});
+  let list=[];for(let k in map){let o=map[k],t=o.c||1;let a1=(o.s1/t).toFixed(2),a2=(o.s2/t).toFixed(2),a3=(o.s3/t).toFixed(2);list.push({n:k,a1,a2,a3,avg:((+a1+a2+a3)/3).toFixed(2)});}
+  list.sort((a,b)=>b.avg-a.avg);
   let tb=document.getElementById("scoreTableBody");tb.innerHTML="";
-  resultList.forEach(x=>tb.innerHTML+=`<tr><td>${x.name}</td><td>${x.avg1}</td><td>${x.avg2}</td><td>${x.avg3}</td><td><strong>${x.totalAvg}</strong></td><td>${bt[x.name].toFixed(2)}</td></tr>`);
-  let t15=resultList.slice(0,15),b15=resultList.slice(15).reverse();
-  if(barTop15)barTop15.destroy();
-  barTop15=new Chart(document.getElementById("barChartTop15"),{type:"bar",data:{labels:t15.map(x=>x.name),datasets:[{label:"综合得分",data:t15.map(x=>x.totalAvg),backgroundColor:"#3b82f6"}]},options:{indexAxis:"y",scales:{x:{min:0,max:10}}}});
-  if(barBot15)barBot15.destroy();
-  barBot15=new Chart(document.getElementById("barChartBot15"),{type:"bar",data:{labels:b15.map(x=>x.name),datasets:[{label:"综合得分",data:b15.map(x=>x.totalAvg),backgroundColor:"#10b981"}]},options:{indexAxis:"y",scales:{x:{min:0,max:10}}}});
-  let v1=getSeriesAvg(seriesMap.v1,scoreMap),v2=getSeriesAvg(seriesMap.v2,scoreMap),v3=getSeriesAvg(seriesMap.v3,scoreMap);
-  let v4=getSeriesAvg(seriesMap.v4,scoreMap),v5=getSeriesAvg(seriesMap.v5,scoreMap),v6=getSeriesAvg(seriesMap.v6,scoreMap);
-  if(radarLeft)radarLeft.destroy();
-  radarLeft=new Chart(document.getElementById("radarLeft"),{type:"radar",data:{labels:["整体外观","元素细节","色彩质感"],datasets:[{label:"v1(e3)",data:v1,borderColor:"#3b82f6",backgroundColor:"#3b82f633"},{label:"v2(e4)",data:v2,borderColor:"#10b981",backgroundColor:"#10b98133"},{label:"v3(e5)",data:v3,borderColor:"#f59e0b",backgroundColor:"#f59e0b33"}]},options:{scales:{r:{min:0,max:10}}}});
-  if(radarRight)radarRight.destroy();
-  radarRight=new Chart(document.getElementById("radarRight"),{type:"radar",data:{labels:["整体外观","元素细节","色彩质感"],datasets:[{label:"v2(e4)",data:v2,borderColor:"#10b981",backgroundColor:"#10b98133"},{label:"v4(re)",data:v4,borderColor:"#8b5cf6",backgroundColor:"#8b5cf633"},{label:"v5(con)",data:v5,borderColor:"#ec4899",backgroundColor:"#ec489933"},{label:"v6(500)",data:v6,borderColor:"#64748b",backgroundColor:"#64748b33"}]},options:{scales:{r:{min:0,max:10}}}});
+  list.forEach(x=>tb.innerHTML+=`<tr><td>${x.n}</td><td>${x.a1}</td><td>${x.a2}</td><td>${x.a3}</td><td><b>${x.avg}</b></td><td>0.5</td></tr>`);
 }
 
-function calcBradleyTerry(rawData,imgList){
-  const win={};imgList.forEach(i=>win[i]={});imgList.forEach(i=>imgList.forEach(j=>win[i][j]=0));
-  const sm={};imgList.forEach(n=>sm[n]={s1:0,s2:0,s3:0,cnt:0});
-  rawData.forEach(d=>{if(!d[1])return;let m=d[1];sm[m].s1+=+d[2];sm[m].s2+=+d[3];sm[m].s3+=+d[4];sm[m].cnt++});
-  let tot={};
-  imgList.forEach(n=>{let o=sm[n],c=o.cnt||1;tot[n]=((o.s1/c)+(o.s2/c)+(o.s3/c))/3});
-  for(let i=0;i<imgList.length;i++){
-    for(let j=i+1;j<imgList.length;j++){
-      let a=imgList[i],b=imgList[j];
-      if(tot[a]>tot[b])win[a][b]++;
-      if(tot[b]>tot[a])win[b][a]++;
-    }
-  }
-  let mu={};imgList.forEach(x=>mu[x]=1);
-  for(let t=0;t<15;t++){
-    imgList.forEach(i=>{
-      let sw=0,sd=0;
-      imgList.forEach(j=>{if(i===j)return;sw+=win[i][j];sd+=(win[i][j]+win[j][i])/(1+Math.exp(mu[j]-mu[i]))});
-      mu[i]=sw/(sd||1);
-    });
-  }
-  let vals=Object.values(mu),minv=Math.min(...vals),maxv=Math.max(...vals),res={};
-  imgList.forEach(x=>res[x]=(mu[x]-minv)/(maxv-minv||1));
-  return res;
-}
-
-async function loadAdminData(){
-  const res=await fetch(API_URL);
-  const rows=await res.json();
-  const tb=document.getElementById("adminBody");tb.innerHTML="";
-  rows.slice(1).forEach((r,i)=>{
-    tb.innerHTML+=`<tr><td>${i+1}</td><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}/${r[3]}/${r[4]}</td><td>${r[5]}</td><td><button class="danger" onclick="delSingle(${i+1})">删除</button></td>`;
-  });
-}
-
-// 单条删除
-async function delSingle(rowId){
-  if(!confirm("确定删除本条记录？"))return;
-  await fetch(`${API_URL}?delSingle=${rowId}`);
-  loadAdminData();
-  alert("单条删除成功");
-}
-
-// ========== 彻底修复：按ID批量删除 之前失效问题 ==========
-async function delByUid(){
-  const targetUid = document.getElementById("delUidInput").value.trim();
-  if(!targetUid) return alert("请输入需要删除的评估ID");
-  if(!confirm(`确定清空【${targetUid}】所有打分记录？不可恢复！`))return;
-  let res = await fetch(`${API_URL}?delUid=${encodeURIComponent(targetUid)}`);
-  let txt = await res.text();
-  loadAdminData();
-  alert(`已成功删除ID：${targetUid} 全部数据`);
-}
-
-async function clearAllData(){
-  if(!confirm("⚠️ 永久清空整张表所有数据，无法恢复！"))return;
-  await fetch(`${API_URL}?clearAll=1`);
-  loadAdminData();
-  alert("全部数据已清空");
-}
-
-async function exportExcel(){
-  const res=await fetch(API_URL);
-  const rows=await res.json();
-  let csv="评估ID,方案名称,外观,细节,色彩,提交时间\n";
-  rows.slice(1).forEach(r=>csv+=r.join(",")+"\n");
-  let blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
-  let a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);a.download="立面单方案打分数据.csv";a.click();
-}
+async function loadAdminData(){const r=await fetch(API_URL);const d=await r.json();const b=document.getElementById("adminBody");b.innerHTML="";d.slice(1).forEach((x,i)=>b.innerHTML+=`<tr><td>${i+1}</td><td>${x[0]}</td><td>${x[1]}</td><td>${x[2]}/${x[3]}/${x[4]}</td><td>${x[5]}</td><td><button onclick="delSingle(${i+1})">删</button></td></tr>`);}
+async function delSingle(i){await fetch(API_URL+"?delSingle="+i);loadAdminData();alert("已删除");}
+async function delByUid(){let u=document.getElementById("delUidInput").value.trim();if(!u)return;if(!confirm("删除该ID所有数据？"))return;await fetch(API_URL+"?delUid="+encodeURIComponent(u));loadAdminData();alert("删除完成");}
+async function clearAllData(){if(!confirm("清空全部数据？"))return;await fetch(API_URL+"?clearAll=1");loadAdminData();alert("已清空");}
+async function exportExcel(){const r=await fetch(API_URL);const d=await r.json();let csv="评估ID,方案,外观,细节,色彩,时间\n";d.slice(1).forEach(x=>csv+=x.join(",")+"\n");let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="打分数据.csv";a.click();}
 </script>
 </body>
 </html>
