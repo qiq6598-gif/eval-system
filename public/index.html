@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>AI立面翻新方案打分系统</title>
+<title>立面翻新｜专家打分评估系统</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
 <style>
@@ -12,23 +12,27 @@ body{background:#f8f9fa;color:#2c3e50;padding:2rem}
 .panel{background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.06);padding:24px;margin-bottom:24px}
 .title{font-size:22px;font-weight:600;margin-bottom:16px;color:#1f2937}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px}
-.img-card{border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;height:500px;display:flex;flex-direction:column}
-.img-card img{width:100%;height:100%;object-fit:contain;background:#f9fafb}
+.img-card{border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;height:500px}
+.img-card img{width:100%;height:450px;object-fit:contain;background:#f9fafb}
 .img-label{text-align:center;padding:12px;font-size:15px;background:#f3f4f6;font-weight:500}
 .bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
-.score-wrap{display:flex;justify-content:center;gap:30px;margin:24px 0}
+.score-wrap{display:flex;justify-content:center;margin:24px 0}
 .score-block{width:50%}
 .score-item{margin:16px 0;text-align:center}
 .score-item label{display:block;margin-bottom:8px;font-weight:500}
+
 .score-btn-group{display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin:8px 0}
 .score-btn{width:36px;height:36px;border-radius:6px;border:1px solid #ccc;background:#f8f8f8;cursor:pointer;font-size:14px}
 .score-btn.active{background:#3b82f6;color:white;border-color:#3b82f6}
+
 .score-slider-container{display:flex;align-items:center;gap:10px;margin-top:6px}
 .score-slider{flex:1;height:8px;border-radius:4px;background:#e5e7eb;outline:none;-webkit-appearance:none}
 .score-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;background:#3b82f6;cursor:pointer}
 .score-value-display{width:30px;font-size:16px;font-weight:600;color:#3b82f6;text-align:center}
+
 .score-input{width:80px;padding:8px;text-align:center;border-radius:6px;border:1px solid #ccc}
 .mode-select{margin-bottom:10px;font-size:14px}
+
 input{padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;width:180px}
 button{padding:8px 16px;border:none;border-radius:6px;background:#3b82f6;color:#fff;cursor:pointer}
 button.secondary{background:#64748b}
@@ -68,17 +72,13 @@ th{background:#f3f4f6;font-weight:600}
 
   <div class="grid">
     <div class="img-card">
-      <img class="reference-img" src="reference.png">
+      <img src="reference.png">
       <div class="img-label">现实翻新案例拍摄参考图</div>
     </div>
     <div class="img-card">
       <img id="imgSingle">
       <div class="img-label">AI翻新设计方案</div>
     </div>
-  </div>
-
-  <div class="panel reference-card">
-    <div class="desc">以真实翻新建筑为参照，对AI翻新方案1-10分量化打分</div>
   </div>
 
   <div class="panel">
@@ -202,7 +202,7 @@ th{background:#f3f4f6;font-weight:600}
 </div>
 
 <script>
-// 已自动替换成你最新的谷歌脚本链接
+// 已自动填入你最新的正确API
 const API_URL = "https://script.google.com/macros/s/AKfycbzg7Wadz_o5sm1oRFUthyJ7kSdqc3xv4SEOtpJR-V9IxshMgVxFGAZ-G5E9aFfUQmJJKg/exec";
 
 const images = [
@@ -213,6 +213,15 @@ const images = [
 "con_0.2.png","con_0.4.png","con_0.6.png","con_0.8.png","con_1.0.png",
 "500_0.2.png","500_0.4.png","500_0.6.png","500_0.8.png","500_1.0.png"
 ];
+
+const seriesMap = {
+  v1: images.filter(n=>n.startsWith("e3")),
+  v2: images.filter(n=>n.startsWith("e4")),
+  v3: images.filter(n=>n.startsWith("e5")),
+  v4: images.filter(n=>n.startsWith("re")),
+  v5: images.filter(n=>n.startsWith("con")),
+  v6: images.filter(n=>n.startsWith("500"))
+};
 
 let currentImg;
 let currentUid = "";
@@ -294,17 +303,36 @@ function backEval(){document.getElementById("evalPage").style.display="block";do
 function goAdmin(){document.getElementById("evalPage").style.display="none";document.getElementById("adminPage").style.display="block";}
 function checkAdmin(){if(document.getElementById("adminPwd").value==="siqihu7"){document.getElementById("adminContent").style.display="block";loadAdminData();}else alert("密码错误");}
 
-async function loadAllScoreData(){
-  const r=await fetch(API_URL);const d=await r.json();const rows=d.slice(1);
-  let map={};images.forEach(n=>map[n]={s1:0,s2:0,s3:0,c:0});
-  rows.forEach(x=>{if(!x[1])return;let m=x[1];map[m].s1+=Number(x[2]);map[m].s2+=Number(x[3]);map[m].s3+=Number(x[4]);map[m].c++;});
-  let list=[];for(let k in map){let o=map[k],t=o.c||1;let a1=(o.s1/t).toFixed(2),a2=(o.s2/t).toFixed(2),a3=(o.s3/t).toFixed(2);list.push({n:k,a1,a2,a3,avg:((+a1+a2+a3)/3).toFixed(2)});}
-  list.sort((a,b)=>b.avg-a.avg);
-  let tb=document.getElementById("scoreTableBody");tb.innerHTML="";
-  list.forEach(x=>tb.innerHTML+=`<tr><td>${x.n}</td><td>${x.a1}</td><td>${x.a2}</td><td>${x.a3}</td><td><b>${x.avg}</b></td><td>0.5</td></tr>`);
+function getSeriesAvg(list, scoreMap){
+  let s1=0,s2=0,s3=0,c=0;
+  list.forEach(n=>{
+    if(scoreMap[n] && scoreMap[n].c>0){
+      s1+=scoreMap[n].s1/scoreMap[n].c;
+      s2+=scoreMap[n].s2/scoreMap[n].c;
+      s3+=scoreMap[n].s3/scoreMap[n].c;
+      c++;
+    }
+  });
+  return c===0 ? [0,0,0] : [(s1/c).toFixed(2),(s2/c).toFixed(2),(s3/c).toFixed(2)];
 }
 
-async function loadAdminData(){const r=await fetch(API_URL);const d=await r.json();const b=document.getElementById("adminBody");b.innerHTML="";d.slice(1).forEach((x,i)=>b.innerHTML+=`<tr><td>${i+1}</td><td>${x[0]}</td><td>${x[1]}</td><td>${x[2]}/${x[3]}/${x[4]}</td><td>${x[5]}</td><td><button onclick="delSingle(${i+1})">删</button></td></tr>`);}
+async function loadAllScoreData(){
+  const r=await fetch(API_URL);const d=await r.json();const rows=d.slice(1);
+  let scoreMap={};images.forEach(n=>scoreMap[n]={s1:0,s2:0,s3:0,c:0});
+  rows.forEach(x=>{if(!x[1])return;let m=x[1];scoreMap[m].s1+=Number(x[2]);scoreMap[m].s2+=Number(x[3]);scoreMap[m].s3+=Number(x[4]);scoreMap[m].c++;});
+  let list=[];for(let k in scoreMap){let o=scoreMap[k];if(o.c===0)continue;let a1=(o.s1/o.c).toFixed(2),a2=(o.s2/o.c).toFixed(2),a3=(o.s3/o.c).toFixed(2);let avg=((+a1++a2++a3)/3).toFixed(2);list.push({n:k,a1,a2,a3,avg});}
+  list.sort((a,b)=>b.avg-a.avg);
+  let tb=document.getElementById("scoreTableBody");tb.innerHTML="";list.forEach(x=>{tb.innerHTML+=`<tr><td>${x.n}</td><td>${x.a1}</td><td>${x.a2}</td><td>${x.a3}</td><td><b>${x.avg}</b></td><td>0.5</td></tr>`;});
+  if(barTop15)barTop15.destroy();if(barBot15)barBot15.destroy();
+  let t15=list.slice(0,15),b15=list.slice(-15).reverse();
+  barTop15=new Chart(document.getElementById("barChartTop15"),{type:"bar",data:{labels:t15.map(x=>x.n),datasets:[{label:"综合平均分",data:t15.map(x=>x.avg),backgroundColor:"#3b82f6"}]},options:{indexAxis:"y",scales:{x:{min:0,max:10}}}});
+  barBot15=new Chart(document.getElementById("barChartBot15"),{type:"bar",data:{labels:b15.map(x=>x.n),datasets:[{label:"综合平均分",data:b15.map(x=>x.avg),backgroundColor:"#10b981"}]},options:{indexAxis:"y",scales:{x:{min:0,max:10}}}});
+  let v1=getSeriesAvg(seriesMap.v1,scoreMap),v2=getSeriesAvg(seriesMap.v2,scoreMap),v3=getSeriesAvg(seriesMap.v3,scoreMap),v4=getSeriesAvg(seriesMap.v4,scoreMap),v5=getSeriesAvg(seriesMap.v5,scoreMap),v6=getSeriesAvg(seriesMap.v6,scoreMap);
+  if(radarLeft)radarLeft.destroy();radarLeft=new Chart(document.getElementById("radarLeft"),{type:"radar",data:{labels:["整体外观","元素细节","色彩质感"],datasets:[{label:"v1(e3)",data:v1,borderColor:"#3b82f6",backgroundColor:"rgba(59,130,246,0.2)"},{label:"v2(e4)",data:v2,borderColor:"#10b981",backgroundColor:"rgba(16,185,129,0.2)"},{label:"v3(e5)",data:v3,borderColor:"#f59e0b",backgroundColor:"rgba(245,158,11,0.2)"}]},options:{scales:{r:{min:0,max:10}}}});
+  if(radarRight)radarRight.destroy();radarRight=new Chart(document.getElementById("radarRight"),{type:"radar",data:{labels:["整体外观","元素细节","色彩质感"],datasets:[{label:"v2(e4)",data:v2,borderColor:"#10b981",backgroundColor:"rgba(16,185,129,0.2)"},{label:"v4(re)",data:v4,borderColor:"#8b5cf6",backgroundColor:"rgba(139,92,246,0.2)"},{label:"v5(con)",data:v5,borderColor:"#ec4899",backgroundColor:"rgba(236,72,153,0.2)"},{label:"v6(500)",data:v6,borderColor:"#6b7280",backgroundColor:"rgba(107,114,128,0.2)"}]},options:{scales:{r:{min:0,max:10}}}});
+}
+
+async function loadAdminData(){const r=await fetch(API_URL);const d=await r.json();const b=document.getElementById("adminBody");b.innerHTML="";d.slice(1).forEach((x,i)=>{b.innerHTML+=`<tr><td>${i+1}</td><td>${x[0]}</td><td>${x[1]}</td><td>${x[2]}/${x[3]}/${x[4]}</td><td>${x[5]}</td><td><button class="danger" onclick="delSingle(${i+1})">删除</button></td></tr>`;});}
 async function delSingle(i){await fetch(API_URL+"?delSingle="+i);loadAdminData();alert("已删除");}
 async function delByUid(){let u=document.getElementById("delUidInput").value.trim();if(!u)return;if(!confirm("删除该ID所有数据？"))return;await fetch(API_URL+"?delUid="+encodeURIComponent(u));loadAdminData();alert("删除完成");}
 async function clearAllData(){if(!confirm("清空全部数据？"))return;await fetch(API_URL+"?clearAll=1");loadAdminData();alert("已清空");}
